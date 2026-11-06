@@ -1,0 +1,1233 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta charset="utf-8">
+<title>고구마배구</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Gowun+Dodum&display=swap">
+<style>
+/* 레이아웃: 군고구마 포장마차의 밤. 로비는 양쪽 선수 카드 + 가운데 설정, 경기는 16:9 코트 한 장 */
+[hidden] { display: none !important; }
+:root {
+  --night: #1f1430;
+  --panel: #2d1f42;
+  --line: #4d3a66;
+  --skin: #9a3a72;
+  --flesh: #f6c64a;
+  --ember: #f0783c;
+  --text: #f7eedd;
+  --muted: #bfaecb;
+  --p1: #5fd6c4;
+  --p2: #ff8f8f;
+  --display: "Black Han Sans", "Malgun Gothic", sans-serif;
+  --body: "Gowun Dodum", "Malgun Gothic", sans-serif;
+  color-scheme: dark;
+}
+html, body { height: 100%; margin: 0; }
+body {
+  background: var(--night);
+  color: var(--text);
+  font-family: var(--body);
+  font-size: 15px;
+  line-height: 1.5;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 20px;
+  box-sizing: border-box;
+}
+button { font: inherit; color: inherit; cursor: pointer; }
+button:focus-visible { outline: 3px solid var(--flesh); outline-offset: 2px; }
+kbd {
+  font-family: var(--body);
+  font-size: 13px;
+  background: var(--night);
+  border: 1px solid var(--line);
+  border-bottom-width: 3px;
+  border-radius: 5px;
+  padding: 0 7px;
+  white-space: nowrap;
+}
+
+#home { max-width: 760px; min-height: 100%; margin: 0 auto; display: grid; align-content: center; justify-items: center; gap: 18px; text-align: center; }
+#home h1 { font-family: var(--display); font-weight: 400; font-size: clamp(56px, 13vw, 112px); line-height: 1; margin: 0; color: var(--flesh); }
+#home canvas { width: 100%; max-width: 720px; aspect-ratio: 720 / 190; }
+.doors { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; width: min(100%, 480px); }
+.doors button { font-family: var(--display); font-size: 26px; border-radius: 8px; padding: 16px 8px; }
+#playHere { background: var(--flesh); color: var(--night); border: 2px solid var(--flesh); }
+#playOnline { background: transparent; border: 2px solid var(--muted); }
+#onlineNote { margin: 0; color: var(--muted); }
+#toHome { margin-left: auto; align-self: center; }
+#lobby { max-width: 1000px; margin: 0 auto; display: grid; gap: 20px; }
+.brand { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px; }
+.brand h1 { font-family: var(--display); font-weight: 400; font-size: clamp(38px, 7vw, 60px); line-height: 1.1; margin: 0; color: var(--flesh); }
+.brand p { margin: 0; color: var(--muted); }
+
+#modeButton { font-family: var(--display); font-size: 20px; background: var(--flesh); color: var(--night); border: 0; border-radius: 6px; padding: 6px 14px; align-self: center; }
+.seats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.seat { background: var(--panel); border-top: 5px solid var(--seat); padding: 14px 16px 16px; display: grid; gap: 10px; align-content: start; min-width: 0; }
+.seat.p1 { --seat: var(--p1); }
+.seat.p2 { --seat: var(--p2); }
+.seat header { display: flex; justify-content: space-between; align-items: baseline; }
+.seat h2 { font-family: var(--display); font-weight: 400; font-size: 24px; margin: 0; color: var(--seat); }
+.seatName { font: inherit; color: inherit; background: linear-gradient(var(--seat), var(--seat)) left bottom / 0 3px no-repeat; border: 0; padding: 0 2px 3px; touch-action: none; user-select: none; -webkit-user-select: none; }
+.seatName.holding { background-size: 100% 3px; transition: background-size .7s linear; }
+.nameEdit { font: inherit; color: inherit; background: var(--night); border: 1px solid var(--seat); border-radius: 4px; width: 6.5em; padding: 0 4px; }
+.hint { color: var(--muted); font-size: 13px; margin: -6px 0 0; }
+.levels { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.levels button { background: transparent; border: 2px solid var(--line); border-radius: 6px; padding: 8px 0; }
+.levels button[aria-pressed="true"] { border-color: var(--seat); color: var(--seat); }
+.ready:disabled { cursor: default; opacity: .85; }
+.seat .who { font-size: 18px; }
+.picker { display: grid; grid-template-columns: 44px 96px 44px; justify-content: center; align-items: center; gap: 12px; }
+.picker canvas { width: 96px; height: 112px; }
+.picker button { background: transparent; border: 2px solid var(--line); border-radius: 6px; height: 44px; font-size: 18px; }
+.ability { margin: 0; padding-left: 18px; min-height: 8.5em; }
+.ability li + li { margin-top: 2px; }
+.keys { display: grid; grid-template-columns: auto 1fr; gap: 6px 12px; margin: 0; align-items: center; }
+.keys dt { color: var(--muted); }
+.keys dd { margin: 0; display: flex; flex-wrap: wrap; gap: 4px; }
+.ready { background: transparent; border: 2px solid var(--seat); border-radius: 6px; padding: 9px 12px; font-size: 16px; }
+.ready[aria-pressed="true"] { background: var(--seat); color: var(--night); font-weight: 700; }
+
+.rules { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 16px 28px; align-items: start; }
+.rules h3 { font-family: var(--display); font-weight: 400; font-size: 18px; margin: 0 0 6px; color: var(--ember); }
+.shots { width: 100%; border-collapse: collapse; }
+.shots td { padding: 5px 12px 5px 0; border-top: 1px solid var(--line); vertical-align: top; }
+.shots td:first-child { white-space: nowrap; color: var(--flesh); }
+.target { display: flex; gap: 6px; }
+.target button { background: transparent; border: 2px solid var(--line); border-radius: 6px; width: 54px; padding: 7px 0; font-variant-numeric: tabular-nums; }
+.target button[aria-pressed="true"] { border-color: var(--flesh); color: var(--flesh); }
+.target { flex-wrap: wrap; align-items: center; }
+.deuce { display: flex; align-items: center; gap: 6px; margin-left: 8px; cursor: pointer; }
+.deuce input { width: 18px; height: 18px; accent-color: var(--flesh); margin: 0; }
+.note { margin: 10px 0 0; color: var(--muted); font-size: 14px; max-width: 24em; }
+
+#game { max-width: min(100%, calc((100dvh - 90px) * 16 / 9)); margin: 0 auto; display: grid; gap: 10px; position: relative; }
+#court { width: 100%; aspect-ratio: 16 / 9; display: block; background: var(--night); }
+.bar { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px; color: var(--muted); font-size: 14px; }
+.ghost { background: transparent; border: 1px solid var(--line); border-radius: 6px; padding: 5px 12px; }
+.overlay { position: absolute; inset: 0 0 auto; aspect-ratio: 16 / 9; display: grid; place-content: center; justify-items: center; gap: 14px; background: rgba(31, 20, 48, .78); text-align: center; }
+.overlay h2 { font-family: var(--display); font-weight: 400; font-size: clamp(30px, 6vw, 54px); margin: 0; color: var(--flesh); }
+.overlay div { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
+.overlay button { background: var(--flesh); color: var(--night); border: 0; border-radius: 6px; padding: 10px 18px; font-weight: 700; }
+.overlay button.quiet { background: transparent; color: var(--text); border: 1px solid var(--muted); }
+
+.tuner { position: absolute; top: 8px; right: 8px; width: min(250px, 60%); background: rgba(31, 20, 48, .94); border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px; display: grid; gap: 6px; font-size: 14px; }
+.tuner h3 { font-family: var(--display); font-weight: 400; font-size: 17px; margin: 0; color: var(--flesh); }
+.tuner label { display: grid; grid-template-columns: 1fr auto; gap: 0 8px; }
+.tuner input { grid-column: 1 / -1; width: 100%; accent-color: var(--flesh); margin: 0; }
+.tuner output { font-variant-numeric: tabular-nums; color: var(--flesh); }
+.tuner button { background: transparent; border: 1px solid var(--muted); border-radius: 6px; padding: 5px; }
+.onlineBox { max-width: 420px; min-height: 100%; margin: 0 auto; display: grid; align-content: center; gap: 12px; }
+.onlineBox h2 { font-family: var(--display); font-weight: 400; font-size: 40px; margin: 0; color: var(--flesh); }
+.onlineBox label { display: grid; gap: 4px; }
+.onlineBox input { font: inherit; font-size: 18px; color: var(--text); background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 10px; min-width: 0; }
+.onlineBox p { margin: 0; color: var(--muted); min-height: 1.5em; }
+.onlineBox .ghost { justify-self: start; }
+.bigButton { font-family: var(--display); font-size: 20px; background: var(--flesh); color: var(--night); border: 0; border-radius: 6px; padding: 11px 14px; }
+.joinRow { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
+#room { max-width: 1000px; margin: 0 auto; display: grid; gap: 14px; }
+.codeTitle { font-family: var(--display); font-weight: 400; font-size: 26px; margin: 0; }
+.codeTitle b { font-weight: 400; font-size: 44px; color: var(--flesh); letter-spacing: 2px; }
+#roomLeave { margin-left: auto; align-self: center; }
+#roomStatus { margin: 0; color: var(--muted); }
+#roomMode { width: auto; padding: 7px 12px; }
+.overlay.finale { background: transparent; place-content: end center; padding-bottom: 3%; box-sizing: border-box; }
+.names { font-size: 15px; }
+.names label { display: grid; gap: 4px; justify-items: start; text-align: left; }
+.names input { font: inherit; color: var(--text); background: var(--night); border: 1px solid var(--muted); border-radius: 6px; padding: 7px 9px; width: 9em; }
+
+@media (max-width: 720px) {
+  .seats, .rules { grid-template-columns: minmax(0, 1fr); }
+}
+</style>
+
+</head>
+<body>
+<section id="home">
+  <h1>고구마배구</h1>
+  <canvas id="homeArt" width="1440" height="380"></canvas>
+  <div class="doors">
+    <button id="playHere">한화면</button>
+    <button id="playOnline">온라인</button>
+  </div>
+</section>
+
+<section id="online" class="onlineBox" hidden>
+  <h2>온라인</h2>
+  <label>내 이름<input id="onlineName" maxlength="8" autocomplete="off"></label>
+  <button id="createRoom" class="bigButton">방 만들기</button>
+  <div class="joinRow">
+    <input id="joinCode" maxlength="4" inputmode="numeric" placeholder="코드 4자리" autocomplete="off" aria-label="방 코드">
+    <button id="joinRoom" class="bigButton">참가하기</button>
+  </div>
+  <p id="onlineStatus" role="status"></p>
+  <button id="onlineBack" class="ghost">처음으로</button>
+</section>
+
+<section id="room" hidden>
+  <div class="brand">
+    <h2 class="codeTitle">방 코드 <b id="roomCode"></b></h2>
+    <p>주소 <span id="roomAddress"></span></p>
+    <button id="roomLeave" class="ghost">나가기</button>
+  </div>
+  <p id="roomStatus" role="status"></p>
+  <div class="seats">
+    <article class="seat p1">
+      <header><h2 id="roomName0"></h2><span class="who" id="roomWho0"></span></header>
+      <div class="picker"><button class="roomPick" data-seat="0" data-step="-1" aria-label="이전 캐릭터">◀</button><canvas id="roomPreview0" width="192" height="224"></canvas><button class="roomPick" data-seat="0" data-step="1" aria-label="다음 캐릭터">▶</button></div>
+      <ul class="ability" id="roomAbility0"></ul>
+      <button class="ready" id="roomReady0" aria-pressed="false"></button>
+    </article>
+    <article class="seat p2">
+      <header><h2 id="roomName1"></h2><span class="who" id="roomWho1"></span></header>
+      <div class="picker"><button class="roomPick" data-seat="1" data-step="-1" aria-label="이전 캐릭터">◀</button><canvas id="roomPreview1" width="192" height="224"></canvas><button class="roomPick" data-seat="1" data-step="1" aria-label="다음 캐릭터">▶</button></div>
+      <ul class="ability" id="roomAbility1"></ul>
+      <button class="ready" id="roomReady1" aria-pressed="false"></button>
+    </article>
+  </div>
+  <div class="target">
+    <button id="roomMode" aria-pressed="true"></button>
+    <div class="target" id="roomTargets">
+      <button data-score="7">7점</button>
+      <button data-score="11">11점</button>
+      <button data-score="15">15점</button>
+      <label class="deuce"><input type="checkbox" id="roomDeuce">듀스</label>
+    </div>
+  </div>
+  <p class="note">방을 만든 사람이 규칙을 정해요. 이동 키로 캐릭터를 고르고 공격 키로 준비해요.</p>
+</section>
+
+<section id="lobby" hidden>
+  <div class="brand">
+    <h1>고구마배구</h1>
+    <button id="modeButton"></button>
+    <button id="toHome" class="ghost">처음으로</button>
+    <p>키보드 하나로 둘이서 하는 배구</p>
+  </div>
+
+  <div class="seats">
+    <article class="seat p1">
+      <header><h2><button class="seatName" id="seatName0" data-seat="0">1P</button><input class="nameEdit" id="nameEdit0" maxlength="8" aria-label="1P 이름" hidden></h2><span class="who" id="who0"></span></header>
+      <p class="hint" id="hint0"></p>
+      <div class="picker"><button data-seat="0" data-step="-1" aria-label="1P 이전 캐릭터">◀</button><canvas id="preview0" width="192" height="224"></canvas><button data-seat="0" data-step="1" aria-label="1P 다음 캐릭터">▶</button></div>
+      <ul class="ability" id="ability0"></ul>
+      <div class="levels" id="levels0" data-seat="0" hidden><button data-level="easy">쉬움</button><button data-level="normal">보통</button><button data-level="hard">어려움</button></div>
+      <dl class="keys" id="keys0">
+        <dt>이동</dt><dd><kbd>A</kbd><kbd>D</kbd></dd>
+        <dt>위·아래 보기</dt><dd><kbd>W</kbd><kbd>S</kbd></dd>
+        <dt>공격</dt><dd><kbd>F</kbd></dd>
+        <dt>점프</dt><dd><kbd>G</kbd></dd>
+        <dt>필살기</dt><dd><kbd>Q</kbd></dd>
+      </dl>
+      <button class="ready" id="ready0" aria-pressed="false">준비하기 (F)</button>
+    </article>
+    <article class="seat p2">
+      <header><h2><button class="seatName" id="seatName1" data-seat="1">2P</button><input class="nameEdit" id="nameEdit1" maxlength="8" aria-label="2P 이름" hidden></h2><span class="who" id="who1"></span></header>
+      <p class="hint" id="hint1"></p>
+      <div class="picker"><button data-seat="1" data-step="-1" aria-label="2P 이전 캐릭터">◀</button><canvas id="preview1" width="192" height="224"></canvas><button data-seat="1" data-step="1" aria-label="2P 다음 캐릭터">▶</button></div>
+      <ul class="ability" id="ability1"></ul>
+      <div class="levels" id="levels1" data-seat="1" hidden><button data-level="easy">쉬움</button><button data-level="normal">보통</button><button data-level="hard">어려움</button></div>
+      <dl class="keys" id="keys1">
+        <dt>이동</dt><dd><kbd>K</kbd><kbd>;</kbd></dd>
+        <dt>위·아래 보기</dt><dd><kbd>O</kbd><kbd>L</kbd></dd>
+        <dt>공격</dt><dd><kbd>'</kbd></dd>
+        <dt>점프</dt><dd><kbd>Enter</kbd></dd>
+        <dt>필살기</dt><dd><kbd>P</kbd></dd>
+      </dl>
+      <button class="ready" id="ready1" aria-pressed="false">준비하기 (')</button>
+    </article>
+  </div>
+
+  <div class="rules">
+    <div>
+      <h3>공 치는 법</h3>
+      <table class="shots">
+        <tr><td>기본</td><td>공은 몸에 닿아도 그냥 지나가요. 공격 키를 눌러야 쳐져요. 코코넛만 달라요.</td></tr>
+        <tr><td>좌우 보고 공격</td><td>보는 쪽으로 약간 띄우면서 멀리 보내요.</td></tr>
+        <tr><td>위 보고 공격</td><td>높게 띄우고, 보던 좌우 방향으로 조금 보내요.</td></tr>
+        <tr><td>공중에서 아래 공격</td><td>빠르게 내려찍고, 보던 좌우 방향으로 조금 보내요.</td></tr>
+      </table>
+    </div>
+    <div>
+      <h3 id="targetTitle">목표 점수</h3>
+      <div class="target" id="target">
+        <button data-score="7" aria-pressed="true">7점</button>
+        <button data-score="11" aria-pressed="false">11점</button>
+        <button data-score="15" aria-pressed="false">15점</button>
+        <label class="deuce"><input type="checkbox" id="deuce">듀스</label>
+      </div>
+      <p class="note" id="modeNote"></p>
+      <p class="note">이동 키로 캐릭터를 고르고 공격 키로 준비해요. 사람이 모두 준비하면 바로 시작해요. AI 자리는 위·아래 키로 난이도를 바꿀 수 있어요. 키보드가 있어야 플레이할 수 있어요.</p>
+    </div>
+  </div>
+</section>
+
+<section id="game" hidden>
+  <canvas id="court" tabindex="-1"></canvas>
+  <div class="bar">
+    <span id="freeHint" hidden>Tab 설정 · </span><span>1P <kbd>A</kbd><kbd>D</kbd><kbd>W</kbd><kbd>S</kbd> 공격 <kbd>F</kbd> 점프 <kbd>G</kbd> 필살기 <kbd>Q</kbd> · 2P <kbd>K</kbd><kbd>;</kbd><kbd>O</kbd><kbd>L</kbd> 공격 <kbd>'</kbd> 점프 <kbd>Enter</kbd> 필살기 <kbd>P</kbd></span>
+    <button class="ghost" id="pauseButton">일시정지 (Esc)</button>
+  </div>
+  <div id="tuner" class="tuner" hidden>
+    <h3>자유 모드 설정 (Tab)</h3>
+    <div id="tunerRows"></div>
+    <button id="tunerReset">처음 값으로</button>
+  </div>
+  <div id="pause" class="overlay" hidden>
+    <h2>일시정지</h2>
+    <div class="names">
+      <label>1P 이름<input id="pauseName0" maxlength="8"></label>
+      <label>2P 이름<input id="pauseName1" maxlength="8"></label>
+    </div>
+    <div>
+      <button id="resume">재개 (Esc)</button>
+      <button id="restart" class="quiet">처음부터</button>
+      <button id="leave" class="quiet">나가기</button>
+    </div>
+  </div>
+  <div id="over" class="overlay finale" hidden>
+    <div>
+      <button id="again">다시 하기 (R)</button>
+      <button id="toLobby" class="quiet">로비로</button>
+    </div>
+  </div>
+</section>
+
+<script src="rules.js"></script>
+<script>
+// ── 화면 ──
+const $ = id => document.getElementById(id);
+const court = $('court');
+const ctx = court.getContext('2d');
+const COLORS = { p: ['#5fd6c4', '#ff8f8f'], skin: '#9a3a72', skinDark: '#6f2653', flesh: '#f6c64a', ember: '#f0783c', text: '#f7eedd', night: '#1f1430' };
+const DISPLAY = '"Black Han Sans", "Malgun Gothic", sans-serif';
+const calm = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+function drawBody(c, char) {
+  const k = char.colors;
+  c.fillStyle = k.skin;
+  c.strokeStyle = k.edge;
+  c.lineWidth = 3;
+  c.beginPath();
+  if (char.id === 'cheese') {
+    c.moveTo(-28, -2); c.lineTo(28, -2); c.lineTo(28, -60); c.lineTo(-28, -78); c.closePath();
+  } else if (char.id === 'goguma') {
+    c.moveTo(0, -78);
+    c.bezierCurveTo(26, -74, 34, -40, 24, -12);
+    c.bezierCurveTo(18, 2, -18, 2, -24, -12);
+    c.bezierCurveTo(-34, -40, -26, -74, 0, -78);
+  } else if (char.id === 'watermelon') {
+    c.ellipse(0, -38, 33, 38, 0, 0, Math.PI * 2);
+  } else if (char.id === 'cabbage') {
+    c.arc(0, -36, 34, 0, Math.PI * 2);
+  } else {
+    c.arc(0, -36, char.id === 'coconut' ? 35 : 31, 0, Math.PI * 2);
+  }
+  c.fill();
+  c.stroke();
+  if (char.id === 'cheese') {
+    c.fillStyle = k.edge;
+    for (const [hx, hy, hr] of [[-17, -14, 4], [15, -10, 3], [-20, -40, 3]]) { c.beginPath(); c.arc(hx, hy, hr, 0, Math.PI * 2); c.fill(); }
+  } else if (char.id === 'goguma') {
+    c.beginPath(); c.moveTo(0, -78); c.quadraticCurveTo(3, -88, -4, -92); c.stroke();
+  } else if (char.id === 'watermelon') {
+    for (const sx of [-22, 22]) { c.beginPath(); c.moveTo(sx * 0.4, -74); c.quadraticCurveTo(sx * 1.4, -38, sx * 0.4, -2); c.stroke(); }
+  } else if (char.id === 'cabbage') {
+    c.beginPath(); c.moveTo(-30, -56); c.quadraticCurveTo(0, -84, 30, -56); c.stroke();
+    c.beginPath(); c.moveTo(-34, -30); c.quadraticCurveTo(-16, -8, 0, -2); c.stroke();
+  } else if (char.id === 'coconut') {
+    for (let a = -2.7; a < -0.4; a += 0.28) {
+      c.beginPath(); c.moveTo(Math.cos(a) * 34, -36 + Math.sin(a) * 34); c.lineTo(Math.cos(a) * 41, -36 + Math.sin(a) * 41); c.stroke();
+    }
+  } else {
+    c.fillStyle = k.edge;
+    c.beginPath(); c.moveTo(-11, -66); c.lineTo(-6, -74); c.lineTo(0, -68); c.lineTo(6, -74); c.lineTo(11, -66); c.closePath(); c.fill();
+  }
+}
+
+function drawFood(c, x, y, o) {
+  const k = o.char.colors;
+  c.save();
+  c.translate(x, y);
+  c.scale(o.facing, 1);
+  if (o.tilt) { c.translate(0, -30); c.rotate(o.tilt); c.translate(0, 30); }
+  drawBody(c, o.char);
+  c.beginPath();
+  c.ellipse(6, -48, 18, 19, 0, 0, Math.PI * 2);
+  c.fillStyle = k.face;
+  c.fill();
+  // 눈: 보는 방향으로 움직여요
+  const ex = o.look === 'side' ? 3 : 1, ey = o.look === 'up' ? -3 : o.look === 'down' ? 3 : 0;
+  for (const eye of [0, 14]) {
+    c.beginPath();
+    c.arc(eye, -50, 5.5, 0, Math.PI * 2);
+    c.fillStyle = '#fff';
+    c.fill();
+    c.beginPath();
+    c.arc(eye + ex, -50 + ey, 2.8, 0, Math.PI * 2);
+    c.fillStyle = COLORS.night;
+    c.fill();
+  }
+  // 목도리: 1P와 2P를 구분해요
+  c.fillStyle = o.scarf;
+  c.fillRect(-27, -26, 54, 8);
+  // 팔: 공을 칠 방향을 가리켜요
+  const angle = o.look === 'up' ? -1.45 : o.look === 'down' ? 1.2 : -0.1;
+  const reach = o.swinging ? 36 : 25;
+  const hx = 20 + Math.cos(angle) * reach, hy = -34 + Math.sin(angle) * reach;
+  c.beginPath();
+  c.moveTo(20, -34);
+  c.lineTo(hx, hy);
+  c.strokeStyle = k.edge;
+  c.lineWidth = 6;
+  c.lineCap = 'round';
+  c.stroke();
+  c.beginPath();
+  c.arc(hx, hy, 6, 0, Math.PI * 2);
+  c.fillStyle = k.face;
+  c.fill();
+  c.restore();
+}
+
+function drawBackdrop(s) {
+  const sky = ctx.createLinearGradient(0, 0, 0, GROUND);
+  sky.addColorStop(0, '#1f1430');
+  sky.addColorStop(1, '#3f2350');
+  ctx.fillStyle = sky;
+  ctx.fillRect(0, 0, W, GROUND);
+  // 포장마차 전구줄
+  ctx.strokeStyle = '#4d3a66';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(0, 18);
+  for (let x = 0; x < W; x += 120) ctx.quadraticCurveTo(x + 60, 46, x + 120, 18);
+  ctx.stroke();
+  for (let x = 60; x < W; x += 120) {
+    ctx.fillStyle = 'rgba(246, 198, 74, .16)';
+    ctx.beginPath(); ctx.arc(x, 39, 17, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = COLORS.flesh;
+    ctx.beginPath(); ctx.arc(x, 39, 5, 0, Math.PI * 2); ctx.fill();
+  }
+  // 바닥
+  ctx.fillStyle = '#6b3a3a';
+  ctx.fillRect(0, GROUND, W, H - GROUND);
+  ctx.fillStyle = COLORS.ember;
+  ctx.fillRect(0, GROUND, W, 5);
+  // 네트
+  ctx.fillStyle = COLORS.text;
+  ctx.fillRect(NET.x - NET.halfW, s.env.netTop, NET.halfW * 2, GROUND - s.env.netTop);
+  ctx.fillStyle = COLORS.ember;
+  ctx.fillRect(NET.x - NET.halfW - 2, s.env.netTop - 4, NET.halfW * 2 + 4, 9);
+}
+
+function seatLabel(s, i) {
+  const name = s.names[i], food = s.chars[i].name, ai = s.ai[i];
+  return ai ? `${name} ${food} (AI ${ai.level.name})` : `${name} ${food}`;
+}
+
+function clockText(frames) {
+  const sec = Math.floor(frames / 60);
+  return `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`;
+}
+
+function drawHud(s) {
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  if (s.mode === 'versus') {
+    ctx.font = `64px ${DISPLAY}`;
+    ctx.fillStyle = COLORS.p[0];
+    ctx.fillText(s.score[0], W / 2 - 90, 100);
+    ctx.fillStyle = COLORS.p[1];
+    ctx.fillText(s.score[1], W / 2 + 90, 100);
+    ctx.font = `17px ${DISPLAY}`;
+    ctx.fillStyle = COLORS.text;
+    const inDeuce = s.deuce && Math.min(...s.score) >= s.target - 1;
+    ctx.fillText(inDeuce ? '듀스' : `${s.target}점 ${s.deuce ? '듀스' : '먼저'}`, W / 2, 100);
+  } else if (s.mode === 'coop') {
+    ctx.font = `60px ${DISPLAY}`;
+    ctx.fillStyle = COLORS.flesh;
+    ctx.fillText(clockText(s.clock), W / 2, 92);
+    const next = COOP_STAGES[s.stage];
+    ctx.font = `17px ${DISPLAY}`;
+    ctx.fillStyle = COLORS.text;
+    ctx.fillText(next ? `${s.stage + 1}단계 · 다음 ${clockText(next.at * 60)}` : `마지막 단계 · 목표 ${clockText(COOP_GOAL * 60)}`, W / 2, 128);
+  } else {
+    ctx.font = `20px ${DISPLAY}`;
+    ctx.fillStyle = COLORS.text;
+    ctx.fillText('자유 모드 · Tab으로 설정', W / 2, 100);
+  }
+  ctx.font = `16px ${DISPLAY}`;
+  ctx.fillStyle = COLORS.p[0];
+  ctx.fillText(seatLabel(s, 0), W / 2 - 90, 146);
+  ctx.fillStyle = COLORS.p[1];
+  ctx.fillText(seatLabel(s, 1), W / 2 + 90, 146);
+  if (s.phase === 'ready') {
+    ctx.font = `44px ${DISPLAY}`;
+    ctx.fillStyle = COLORS.flesh;
+    ctx.fillText(s.mode === 'versus' ? `${s.server + 1}P 서브` : '준비', W / 2, 230);
+  } else if (s.phase === 'point') {
+    ctx.font = `52px ${DISPLAY}`;
+    ctx.fillStyle = COLORS.p[s.server];
+    ctx.fillText(`${s.server + 1}P 득점`, W / 2, 230);
+  }
+  if (s.phase === 'waiting' && !s.ai.every(Boolean)) {
+    ctx.font = `22px ${DISPLAY}`;
+    ctx.fillStyle = COLORS.text;
+    ctx.fillText('공격 키를 누르면 다시 시작해요', W / 2, 282);
+  }
+  if (s.notice) {
+    ctx.font = `40px ${DISPLAY}`;
+    ctx.lineWidth = 8;
+    ctx.lineJoin = 'round';
+    ctx.strokeStyle = COLORS.night;
+    ctx.strokeText(s.notice.text, W / 2, 230);
+    ctx.fillStyle = s.notice.side < 0 ? COLORS.flesh : COLORS.p[s.notice.side];
+    ctx.fillText(s.notice.text, W / 2, 230);
+  }
+  // 바람 표시
+  if (Math.abs(s.env.windNow) > 0.004) {
+    const n = Math.ceil(Math.abs(s.env.windNow) / 0.03);
+    ctx.font = `20px ${DISPLAY}`;
+    ctx.fillStyle = '#a9dcff';
+    ctx.fillText(`바람 ${(s.env.windNow > 0 ? '→' : '←').repeat(n)}`, W / 2, 172);
+  }
+  s.players.forEach(drawGauge);
+}
+
+// 필살기 게이지: 코트 양옆에 세로로 표시해요. 코코넛은 게이지가 없어요.
+function drawGauge(p) {
+  const c = p.char;
+  if (!c.special) return;
+  const x = p.side === 0 ? 12 : W - 26, top = 150, height = 220;
+  ctx.fillStyle = 'rgba(0, 0, 0, .35)';
+  ctx.fillRect(x, top, 14, height);
+  const full = p.gauge >= 1;
+  ctx.fillStyle = full || p.slowing || p.rage > 0 ? COLORS.flesh : COLORS.p[p.side];
+  const fill = height * p.gauge;
+  ctx.fillRect(x, top + height - fill, 14, fill);
+  ctx.strokeStyle = COLORS.text;
+  ctx.lineWidth = 1.5;
+  ctx.strokeRect(x, top, 14, height);
+  if (full) {
+    ctx.font = `15px ${DISPLAY}`;
+    ctx.textAlign = p.side === 0 ? 'left' : 'right';
+    ctx.fillStyle = COLORS.flesh;
+    ctx.fillText(p.side === 0 ? 'Q' : 'P', p.side === 0 ? x : x + 14, top - 14);
+    ctx.textAlign = 'center';
+  }
+}
+
+function drawBall(s, fx) {
+  const r = s.env.ballR;
+  fx.trail.forEach((t, i) => {
+    ctx.fillStyle = `rgba(246, 198, 74, ${(i + 1) / fx.trail.length * 0.18})`;
+    ctx.beginPath(); ctx.arc(t.x, t.y, r * 0.85, 0, Math.PI * 2); ctx.fill();
+  });
+  for (const b of s.balls) {
+    // 바닥 그림자: 공이 떨어질 자리를 읽게 해줘요
+    ctx.fillStyle = 'rgba(0, 0, 0, .3)';
+    ctx.beginPath();
+    ctx.ellipse(b.x, GROUND + 7, Math.max(6, 22 - (GROUND - b.y) / 40), 5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // 느려진 공은 파랗게, 빨라진 공은 빨갛게 보여요
+    const slowed = b.slow < 1 || s.players.some(p => p.slowing);
+    ctx.fillStyle = slowed ? '#a9dcff' : b.slow > 1 ? '#ff6b5e' : COLORS.text;
+    ctx.beginPath(); ctx.arc(b.x, b.y, r, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = COLORS.ember;
+    ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.arc(b.x, b.y, r - 1.5, 0, Math.PI * 2); ctx.stroke();
+    ctx.beginPath(); ctx.arc(b.x - r * 1.1, b.y, r * 1.1, -0.8, 0.8); ctx.stroke();
+    ctx.beginPath(); ctx.arc(b.x + r * 1.1, b.y, r * 1.1, Math.PI - 0.8, Math.PI + 0.8); ctx.stroke();
+  }
+}
+
+function drawPlayer(p) {
+  ctx.fillStyle = 'rgba(0, 0, 0, .3)';
+  ctx.beginPath();
+  ctx.ellipse(p.x, GROUND + 7, 26, 5, 0, 0, Math.PI * 2);
+  ctx.fill();
+  const c = p.char;
+  const swinging = !!p.swing && p.swing.age < c.swingActive;
+  if (swinging) {
+    ctx.strokeStyle = COLORS.flesh;
+    ctx.globalAlpha = 1 - p.swing.age / c.swingActive;
+    ctx.lineWidth = 4;
+    if (p.swing.dir === 'wide') {
+      const z = wideZone(p);
+      ctx.fillStyle = 'rgba(246, 198, 74, .25)';
+      ctx.beginPath();
+      ctx.ellipse((z.left + z.right) / 2, (z.top + z.bottom) / 2, (z.right - z.left) / 2, (z.bottom - z.top) / 2, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+    } else {
+      const z = hitZone(p);
+      ctx.beginPath(); ctx.arc(z.x, z.y, z.r, 0, Math.PI * 2); ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+  }
+  if (p.rage > 0) {
+    ctx.strokeStyle = COLORS.ember;
+    ctx.lineWidth = 4;
+    ctx.beginPath(); ctx.arc(p.x, p.y - 38, 48, 0, Math.PI * 2); ctx.stroke();
+  }
+  if (p.dash > 0) {
+    ctx.fillStyle = 'rgba(200, 208, 245, .35)';
+    ctx.beginPath(); ctx.arc(p.x - p.facing * 34, p.y - 38, 32, 0, Math.PI * 2); ctx.fill();
+  }
+  if (p.spike > 0) {
+    ctx.strokeStyle = COLORS.flesh;
+    ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.arc(p.x, p.y - 38, 50, 0, Math.PI * 2); ctx.stroke();
+  }
+  drawFood(ctx, p.x, p.y, { char: c, facing: p.facing, look: p.look, scarf: COLORS.p[p.side], swinging, tilt: p.dive > 0 ? 1.2 : 0 });
+  if (c.charge && p.charge > 0) {
+    // 수박 충전 막대: 눈금이 중, 끝이 강이에요
+    const bx = p.x - 34, by = p.y - 104, bw = 68;
+    ctx.fillStyle = 'rgba(0, 0, 0, .45)';
+    ctx.fillRect(bx, by, bw, 9);
+    ctx.fillStyle = p.charge >= c.charge.strong ? COLORS.ember : p.charge >= c.charge.mid ? COLORS.flesh : COLORS.text;
+    ctx.fillRect(bx, by, bw * Math.min(1, p.charge / c.charge.strong), 9);
+    ctx.fillStyle = COLORS.night;
+    ctx.fillRect(bx + bw * c.charge.mid / c.charge.strong - 1, by, 2, 9);
+  }
+}
+
+function drawBig(p, x, y, size, side, o) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.scale(size, size);
+  drawFood(ctx, 0, 0, { char: p.char, scarf: COLORS.p[side], swinging: false, look: 'side', ...o });
+  ctx.restore();
+}
+
+// 경기 시작 장면: 양쪽 캐릭터가 날아 들어오고 VS가 찍혀요.
+function drawIntro(s, fx) {
+  const t = calm ? 60 : fx.age;
+  const e = 1 - Math.pow(1 - Math.min(1, t / 26), 3);
+  ctx.fillStyle = '#17324a';
+  ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = '#4a1f33';
+  ctx.beginPath();
+  ctx.moveTo(560, 0); ctx.lineTo(W, 0); ctx.lineTo(W, H); ctx.lineTo(400, H); ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = COLORS.flesh;
+  ctx.lineWidth = 8;
+  ctx.beginPath(); ctx.moveTo(560, 0); ctx.lineTo(400, H); ctx.stroke();
+
+  const x0 = -260 + 480 * e, x1 = W + 260 - 480 * e;
+  drawBig(s.players[0], x0, 410, 3.4, 0, { facing: 1 });
+  drawBig(s.players[1], x1, 410, 3.4, 1, { facing: -1 });
+
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  [[x0, 0], [x1, 1]].forEach(([x, i]) => {
+    ctx.font = `44px ${DISPLAY}`;
+    ctx.fillStyle = COLORS.p[i];
+    ctx.fillText(s.names[i], x, 456);
+    ctx.font = `22px ${DISPLAY}`;
+    ctx.fillStyle = COLORS.text;
+    ctx.fillText(s.ai[i] ? `${s.chars[i].name} · AI ${s.ai[i].level.name}` : s.chars[i].name, x, 498);
+  });
+  if (t >= 26) {
+    const slam = Math.max(1, 3 - (t - 26) / 4);
+    ctx.save();
+    ctx.translate(W / 2 - 10, H / 2 - 20);
+    ctx.scale(slam, slam);
+    ctx.font = `120px ${DISPLAY}`;
+    ctx.lineWidth = 12;
+    ctx.strokeStyle = COLORS.night;
+    ctx.lineJoin = 'round';
+    ctx.strokeText(s.mode === 'coop' ? '&' : 'VS', 0, 0);
+    ctx.fillStyle = COLORS.flesh;
+    ctx.fillText(s.mode === 'coop' ? '&' : 'VS', 0, 0);
+    ctx.restore();
+    if (t < 34 && !calm) {
+      ctx.fillStyle = `rgba(255, 255, 255, ${0.7 * (34 - t) / 8})`;
+      ctx.fillRect(0, 0, W, H);
+    }
+  }
+}
+
+// 경기 끝 장면: 이긴 캐릭터를 크게 보여줘요.
+function drawVictory(s, fx) {
+  const w = fx.winner, t = fx.age, tint = COLORS.p[w];
+  ctx.fillStyle = COLORS.night;
+  ctx.fillRect(0, 0, W, H);
+  // 뒤에서 도는 빛살
+  const cx = 300, cy = 300, spin = calm ? 0 : t * 0.006;
+  ctx.fillStyle = tint;
+  ctx.globalAlpha = 0.14;
+  for (let i = 0; i < 12; i++) {
+    const a = spin + i * Math.PI / 6;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.lineTo(cx + Math.cos(a) * 900, cy + Math.sin(a) * 900);
+    ctx.lineTo(cx + Math.cos(a + 0.26) * 900, cy + Math.sin(a + 0.26) * 900);
+    ctx.closePath();
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+  // 색종이
+  if (!calm) {
+    const paper = [COLORS.flesh, COLORS.ember, tint, COLORS.text];
+    for (let i = 0; i < 46; i++) {
+      ctx.fillStyle = paper[i % 4];
+      ctx.fillRect((i * 97 + Math.sin(t * 0.03 + i) * 24) % W, (t * (1.4 + i % 3 * 0.6) + i * 53) % H, 8, 13);
+    }
+  }
+  ctx.fillStyle = COLORS.ember;
+  ctx.fillRect(0, 486, W, H - 486);
+
+  const hop = calm ? 0 : Math.abs(Math.sin(t * 0.09)) * 34;
+  drawBig(s.players[w], 300, 486 - hop, 4.6, w, { facing: 1, look: 'up', swinging: true });
+  drawBig(s.players[1 - w], 880, 486, 1.3, 1 - w, { facing: -1, look: 'down', tilt: 0.25 });
+
+  const rise = calm ? 1 : Math.min(1, t / 24);
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.globalAlpha = rise;
+  ctx.font = `104px ${DISPLAY}`;
+  ctx.lineWidth = 10;
+  ctx.lineJoin = 'round';
+  ctx.strokeStyle = COLORS.night;
+  ctx.strokeText('승리!', 680, 120);
+  ctx.fillStyle = COLORS.flesh;
+  ctx.fillText('승리!', 680, 120);
+  ctx.font = `50px ${DISPLAY}`;
+  ctx.fillStyle = tint;
+  ctx.fillText(s.names[w], 680, 214);
+  ctx.font = `26px ${DISPLAY}`;
+  ctx.fillStyle = COLORS.text;
+  ctx.fillText(s.chars[w].name, 680, 262);
+  ctx.font = `44px ${DISPLAY}`;
+  ctx.fillText(`${s.score[0]} : ${s.score[1]}`, 680, 318);
+  ctx.globalAlpha = 1;
+}
+
+// 공지키기 끝 장면: 둘이 함께 버틴 시간을 보여줘요.
+function drawCoopEnd(s, fx) {
+  const t = fx.age;
+  ctx.fillStyle = COLORS.night;
+  ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = COLORS.ember;
+  ctx.fillRect(0, 486, W, H - 486);
+  const hop = calm || !s.cleared ? 0 : Math.abs(Math.sin(t * 0.09)) * 30;
+  const look = s.cleared ? 'up' : 'side';
+  drawBig(s.players[0], 250, 486 - hop, 3.2, 0, { facing: 1, look });
+  drawBig(s.players[1], 710, 486 - hop, 3.2, 1, { facing: -1, look });
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.globalAlpha = calm ? 1 : Math.min(1, t / 24);
+  ctx.font = `46px ${DISPLAY}`;
+  ctx.fillStyle = COLORS.text;
+  ctx.fillText(s.cleared ? '모든 단계를 깼어요!' : '공을 놓쳤어요', W / 2, 62);
+  ctx.font = `96px ${DISPLAY}`;
+  ctx.fillStyle = COLORS.flesh;
+  ctx.fillText(clockText(s.clock), W / 2, 158);
+  ctx.font = `24px ${DISPLAY}`;
+  ctx.fillStyle = COLORS.text;
+  ctx.fillText(`${Math.min(s.stage + 1, COOP_STAGES.length)}단계까지 · 최고 기록 ${clockText(fx.best)}${fx.isBest ? ' (새 기록)' : ''}`, W / 2, 232);
+  ctx.globalAlpha = 1;
+}
+
+function render(s, fx) {
+  const scale = court.width / W;
+  ctx.setTransform(scale, 0, 0, scale, 0, 0);
+  if (fx.shake > 0) ctx.translate((Math.random() - 0.5) * fx.shake, (Math.random() - 0.5) * fx.shake);
+  if (s.phase === 'intro') { drawIntro(s, fx); return; }
+  if (s.phase === 'over' && s.mode === 'coop') { drawCoopEnd(s, fx); return; }
+  if (s.phase === 'over' && fx.winner !== null) { drawVictory(s, fx); return; }
+  drawBackdrop(s);
+  drawHud(s);
+  s.players.forEach(drawPlayer);
+  drawBall(s, fx);
+  fx.rings = fx.rings.filter(r => r.life > 0);
+  fx.rings.forEach(r => {
+    ctx.strokeStyle = r.color;
+    ctx.globalAlpha = r.life / 20;
+    ctx.lineWidth = 5;
+    ctx.beginPath(); ctx.arc(r.x, r.y, 60 - r.life * 2, 0, Math.PI * 2); ctx.stroke();
+    ctx.globalAlpha = 1;
+    r.life--;
+  });
+}
+
+let audio = null;
+function beep(freq, length, type) {
+  try {
+    audio = audio || new AudioContext();
+    const osc = audio.createOscillator(), gain = audio.createGain();
+    osc.type = type;
+    osc.frequency.value = freq;
+    gain.gain.setValueAtTime(0.12, audio.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, audio.currentTime + length);
+    osc.connect(gain).connect(audio.destination);
+    osc.start();
+    osc.stop(audio.currentTime + length);
+  } catch (e) { /* 소리가 없어도 게임은 돌아가요 */ }
+}
+
+function playEvents(s, fx) {
+  for (const e of s.events) {
+    if (e.type === 'swing') beep(220, 0.05, 'triangle');
+    if (e.type === 'special') {
+      beep(520, 0.18, 'triangle');
+      const who = s.players[e.side];
+      fx.rings.push({ x: who.x, y: who.y - 38, life: 20, color: COLORS.p[e.side] });
+    }
+    if (e.type === 'hit') {
+      beep(e.dir === 'down' ? 660 : 440, 0.09, 'square');
+      fx.rings.push({ x: e.x, y: e.y, life: 20, color: COLORS.flesh });
+      if (e.dir === 'down' && !calm) fx.shake = 7;
+    }
+    if (e.type === 'point') {
+      beep(160, 0.25, 'sawtooth');
+      fx.rings.push({ x: e.x, y: GROUND, life: 20, color: COLORS.ember });
+      if (!calm) fx.shake = 12;
+    }
+    if (e.type === 'over') showOver(e.winner);
+    if (e.type === 'stage') beep(740, 0.2, 'triangle');
+    if (e.type === 'coopEnd') showCoopEnd(s);
+  }
+  s.events.length = 0;
+}
+
+// ── 입력 ── e.code를 써서 한글 입력 상태에서도 키가 먹어요.
+const KEYS = [
+  { left: 'KeyA', right: 'KeyD', up: 'KeyW', down: 'KeyS', attack: 'KeyF', jump: 'KeyG', special: 'KeyQ' },
+  { left: 'KeyK', right: 'Semicolon', up: 'KeyO', down: 'KeyL', attack: 'Quote', jump: 'Enter', special: 'KeyP' },
+];
+const GAME_KEYS = new Set(KEYS.flatMap(k => Object.values(k)));
+const held = new Set();
+const attackQueued = [false, false];
+const specialQueued = [false, false];
+
+function readInput(i) {
+  const k = KEYS[i];
+  const input = {
+    left: held.has(k.left), right: held.has(k.right),
+    up: held.has(k.up), down: held.has(k.down),
+    jump: held.has(k.jump),
+    attack: attackQueued[i], attackHeld: held.has(k.attack),
+    special: held.has(k.special), specialPressed: specialQueued[i],
+  };
+  attackQueued[i] = false;
+  specialQueued[i] = false;
+  return input;
+}
+
+// ── 로비와 경기 흐름 ──
+const lobby = { ready: [false, false], picks: [0, 0], target: 7, ai: [null, null], deuce: false, names: ['1P', '2P'], mode: 0 };
+let freeSettings = {};
+let match = null, fx = null, paused = false;
+
+function loadNames() {
+  try {
+    const saved = JSON.parse(localStorage.getItem('names'));
+    if (Array.isArray(saved) && saved.length === 2) return saved;
+  } catch (e) { /* 저장이 막혀 있어도 기본 이름으로 시작해요 */ }
+  return ['1P', '2P'];
+}
+
+function setName(i, value) {
+  lobby.names[i] = value.trim() || `${i + 1}P`;
+  try { localStorage.setItem('names', JSON.stringify(lobby.names)); } catch (e) { /* 이번 판에만 적용돼요 */ }
+}
+
+function editName(i) {
+  const input = $('nameEdit' + i);
+  input.value = lobby.names[i];
+  $('seatName' + i).hidden = true;
+  input.hidden = false;
+  input.focus();
+  input.select();
+}
+
+// 자유 모드 설정창이 열려 있으면 시간이 멈춰요.
+function tuning() {
+  return !$('tuner').hidden;
+}
+
+function setPaused(on) {
+  paused = on;
+  $('pause').hidden = !on;
+  if (on) {
+    [0, 1].forEach(i => { $('pauseName' + i).value = lobby.names[i]; });
+    $('resume').focus();
+  }
+  else court.focus();
+}
+
+function renderLobby() {
+  [0, 1].forEach(i => {
+    const char = CHARACTERS[lobby.picks[i]] || RANDOM_PICK;
+    $('who' + i).textContent = char.name;
+    const ai = lobby.ai[i], bothAi = !!(lobby.ai[0] && lobby.ai[1]);
+    const button = $('ready' + i);
+    button.setAttribute('aria-pressed', lobby.ready[i]);
+    button.disabled = !!ai && !bothAi;
+    button.textContent = bothAi ? 'AI끼리 시작' : ai ? 'AI 준비 완료' : lobby.ready[i] ? '준비 완료' : `준비하기 (${i === 0 ? 'F' : "'"})`;
+    $('seatName' + i).textContent = ai ? `${lobby.names[i]} AI` : lobby.names[i];
+    $('hint' + i).textContent = ai ? '글자를 누르면 이름 변경, 꾹 누르면 사람으로 바뀌어요' : '글자를 누르면 이름 변경, 꾹 누르면 AI로 바뀌어요';
+    $('levels' + i).hidden = !ai;
+    $('keys' + i).hidden = !!ai;
+    $('levels' + i).querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', b.dataset.level === ai));
+    const c = $('preview' + i).getContext('2d');
+    c.setTransform(2, 0, 0, 2, 0, 0);
+    c.clearRect(0, 0, 96, 112);
+    if (char === RANDOM_PICK) {
+      c.font = `76px ${DISPLAY}`;
+      c.textAlign = 'center';
+      c.textBaseline = 'middle';
+      c.fillStyle = COLORS.p[i];
+      c.fillText('?', 48, 60);
+    } else drawFood(c, 48, 106, { char, facing: i === 0 ? 1 : -1, look: 'side', scarf: COLORS.p[i], swinging: false });
+    $('ability' + i).replaceChildren(...char.ability.map(line => {
+      const li = document.createElement('li');
+      li.textContent = line;
+      return li;
+    }));
+  });
+  const mode = MODES[lobby.mode];
+  $('modeButton').textContent = mode.name;
+  $('modeNote').textContent = mode.note;
+  $('target').hidden = mode.id !== 'versus';
+  $('targetTitle').hidden = mode.id !== 'versus';
+  document.querySelectorAll('#target button').forEach(b => {
+    b.setAttribute('aria-pressed', Number(b.dataset.score) === lobby.target);
+  });
+}
+
+function setAi(i, level) {
+  lobby.ai[i] = level;
+  lobby.ready[i] = !!level;
+  lobby.ready[1 - i] = !!lobby.ai[1 - i];
+  renderLobby();
+  beep(level ? 520 : 330, 0.08, 'triangle');
+}
+
+function stepLevel(i, step) {
+  const ids = Object.keys(AI_LEVELS);
+  lobby.ai[i] = ids[(ids.indexOf(lobby.ai[i]) + step + ids.length) % ids.length];
+  renderLobby();
+}
+
+function pickCharacter(i, step) {
+  if (lobby.ready[i] && !lobby.ai[i]) return;
+  const slots = CHARACTERS.length + 1;
+  lobby.picks[i] = (lobby.picks[i] + step + slots) % slots;
+  renderLobby();
+}
+
+function toggleReady(i) {
+  if (lobby.ai[0] && lobby.ai[1]) { startMatch(); return; }
+  if (lobby.ai[i]) return;
+  lobby.ready[i] = !lobby.ready[i];
+  renderLobby();
+  beep(330, 0.06, 'triangle');
+  if (lobby.ready[0] && lobby.ready[1]) setTimeout(() => {
+    if (lobby.ready[0] && lobby.ready[1]) startMatch();
+  }, 350);
+}
+
+function startMatch() {
+  const mode = MODES[lobby.mode].id;
+  const chars = lobby.picks.map(i => CHARACTERS[i] || CHARACTERS[Math.floor(Math.random() * CHARACTERS.length)]);
+  match = makeMatch(chars, lobby.target, lobby.ai, lobby.deuce, mode, mode === 'free' ? freeSettings : null);
+  match.names = lobby.names;
+  if (mode !== 'free') {
+    match.phase = 'intro';
+    match.timer = TIMERS.intro;
+  }
+  $('tuner').hidden = true;
+  $('freeHint').hidden = mode !== 'free';
+  fx = { trail: [], rings: [], shake: 0, age: 0, winner: null };
+  $('lobby').hidden = true;
+  $('game').hidden = false;
+  $('over').hidden = true;
+  setPaused(false);
+  fitCourt();
+  court.focus();
+}
+
+function showLobby() {
+  if (match && match.online) { Online.leave(); return; }
+  match = null;
+  paused = false;
+  $('pause').hidden = true;
+  $('tuner').hidden = true;
+  lobby.ready = lobby.ai.map(Boolean);
+  $('game').hidden = true;
+  $('lobby').hidden = false;
+  renderLobby();
+}
+
+function drawHome() {
+  const c = $('homeArt').getContext('2d');
+  c.setTransform(2, 0, 0, 2, 0, 0);
+  c.clearRect(0, 0, 720, 190);
+  c.fillStyle = COLORS.ember;
+  c.fillRect(0, 166, 720, 5);
+  CHARACTERS.forEach((char, i) => {
+    const x = 70 + i * 116;
+    c.save();
+    c.translate(x, 164);
+    c.scale(1.25, 1.25);
+    drawFood(c, 0, 0, { char, facing: i < 3 ? 1 : -1, look: i % 2 ? 'up' : 'side', scarf: COLORS.p[i < 3 ? 0 : 1], swinging: false });
+    c.restore();
+  });
+}
+
+function showHome() {
+  $('lobby').hidden = true;
+  $('online').hidden = true;
+  $('home').hidden = false;
+  $('playHere').focus();
+}
+
+function openLobby() {
+  $('home').hidden = true;
+  $('lobby').hidden = false;
+  renderLobby();
+}
+
+function loadBest() {
+  try { return Number(localStorage.getItem('coopBest')) || 0; } catch (e) { return 0; }
+}
+
+function showCoopEnd(s) {
+  const best = loadBest();
+  fx.isBest = s.clock > best;
+  fx.best = Math.max(best, s.clock);
+  fx.age = 0;
+  try { localStorage.setItem('coopBest', fx.best); } catch (e) { /* 이번 판에만 보여요 */ }
+  beep(s.cleared ? 660 : 200, 0.4, 'triangle');
+}
+
+function buildTuner() {
+  $('tunerRows').replaceChildren(...TUNERS.map(t => {
+    const label = document.createElement('label'), input = document.createElement('input'), out = document.createElement('output');
+    label.textContent = t.label;
+    input.type = 'range';
+    input.id = 'tune-' + t.key;
+    Object.assign(input, { min: t.min, max: t.max, step: t.step });
+    input.addEventListener('input', () => applyTune(t, Number(input.value)));
+    label.append(out, input);
+    t.output = out;
+    t.input = input;
+    return label;
+  }));
+}
+
+function showTune(t, value) {
+  t.input.value = t.flip ? t.max + t.min - value : value;
+  t.output.textContent = t.flip ? t.max + t.min - value : Math.round(value * 100) / 100;
+}
+
+function applyTune(t, shown) {
+  const value = t.flip ? t.max + t.min - shown : shown;
+  freeSettings[t.key] = value;
+  if (match) {
+    match.env[t.key] = value;
+    syncBalls(match);
+  }
+  t.output.textContent = shown;
+}
+
+function syncTuner() {
+  TUNERS.forEach(t => showTune(t, match.env[t.key]));
+}
+
+function showOver(winner) {
+  fx.winner = winner;
+  fx.age = 0;
+  beep(660, 0.4, 'triangle');
+}
+
+function fitCourt() {
+  const ratio = Math.min(window.devicePixelRatio || 1, 2);
+  const width = Math.round(court.clientWidth * ratio) || W;
+  court.width = width;
+  court.height = Math.round(width * 9 / 16);
+}
+
+addEventListener('resize', () => { if (match) fitCourt(); });
+addEventListener('blur', () => held.clear());
+
+addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT' && e.target.type === 'text' && e.code !== 'Escape') return;
+  if (!$('home').hidden || Online.handleKey(e)) return;
+  if (GAME_KEYS.has(e.code)) {
+    if (!e.ctrlKey && !e.metaKey && !e.altKey) e.preventDefault();
+    if (!e.repeat) {
+      held.add(e.code);
+      KEYS.forEach((k, i) => {
+        if (paused || tuning()) return;
+        if (match && match.phase === 'waiting') {
+          if (e.code === k.attack && !match.ai[i]) resumeFree(match);
+          return;
+        }
+        if (match) {
+          if (e.code === k.attack) attackQueued[i] = true;
+          if (e.code === k.attack && match.phase === 'intro') match.timer = 1;
+          if (e.code === k.special) specialQueued[i] = true;
+        } else if (e.code === k.attack) toggleReady(i);
+        else if (e.code === k.left) pickCharacter(i, -1);
+        else if (e.code === k.right) pickCharacter(i, 1);
+        else if (lobby.ai[i] && e.code === k.up) stepLevel(i, -1);
+        else if (lobby.ai[i] && e.code === k.down) stepLevel(i, 1);
+      });
+    }
+  }
+  
+  if (e.code === 'Tab' && match && match.mode === 'free' && match.phase !== 'over') {
+    e.preventDefault();
+    $('tuner').hidden = !$('tuner').hidden;
+    if (tuning()) syncTuner();
+    else court.focus();
+  }
+  if (e.code === 'Escape' && match) {
+    if (match.phase === 'over') showLobby();
+    else setPaused(!paused);
+  }
+  if (e.code === 'KeyR' && !e.ctrlKey && !e.metaKey && match && match.phase === 'over') {
+    e.preventDefault();
+    if (match.online) Online.rematch();
+    else startMatch();
+  }
+});
+addEventListener('keyup', e => held.delete(e.code));
+
+$('ready0').addEventListener('click', e => { toggleReady(0); e.currentTarget.blur(); });
+$('ready1').addEventListener('click', e => { toggleReady(1); e.currentTarget.blur(); });
+document.querySelectorAll('.picker button').forEach(b => b.addEventListener('click', () => {
+  pickCharacter(Number(b.dataset.seat), Number(b.dataset.step));
+  b.blur();
+}));
+// 1P·2P 글자를 꾹 누르면 AI로 바뀌어요.
+document.querySelectorAll('.seatName').forEach(name => {
+  const i = Number(name.dataset.seat);
+  const toggle = () => setAi(i, lobby.ai[i] ? null : 'normal');
+  const input = $('nameEdit' + i);
+  input.addEventListener('blur', () => {
+    setName(i, input.value);
+    input.hidden = true;
+    name.hidden = false;
+    renderLobby();
+  });
+  input.addEventListener('keydown', e => {
+    if (e.code === 'Escape') input.value = lobby.names[i];
+    if (e.code === 'Enter' || e.code === 'Escape') input.blur();
+  });
+  let timer = null;
+  const release = () => {
+    clearTimeout(timer);
+    timer = null;
+    name.classList.remove('holding');
+  };
+  name.addEventListener('pointerdown', e => {
+    name.setPointerCapture(e.pointerId);
+    name.classList.add('holding');
+    timer = setTimeout(() => { release(); toggle(); name.blur(); }, 700);
+  });
+  name.addEventListener('pointerup', () => {
+    const short = timer !== null;
+    release();
+    if (short) editName(i);
+  });
+  name.addEventListener('pointercancel', release);
+  name.addEventListener('contextmenu', e => e.preventDefault());
+  name.addEventListener('click', e => { if (e.detail === 0) toggle(); });
+});
+document.querySelectorAll('.levels').forEach(group => group.addEventListener('click', e => {
+  const level = e.target.dataset.level;
+  if (level) lobby.ai[Number(group.dataset.seat)] = level;
+  renderLobby();
+  e.target.blur();
+}));
+$('target').addEventListener('click', e => {
+  const score = Number(e.target.dataset.score);
+  if (score) { lobby.target = score; renderLobby(); }
+});
+
+$('toLobby').addEventListener('click', showLobby);
+$('playHere').addEventListener('click', openLobby);
+$('playOnline').addEventListener('click', () => Online.open());
+$('toHome').addEventListener('click', showHome);
+$('modeButton').addEventListener('click', e => {
+  lobby.mode = (lobby.mode + 1) % MODES.length;
+  renderLobby();
+  e.currentTarget.blur();
+});
+$('tunerReset').addEventListener('click', e => {
+  freeSettings = {};
+  Object.assign(match.env, BASE_ENV);
+  syncBalls(match);
+  syncTuner();
+  e.currentTarget.blur();
+});
+$('resume').addEventListener('click', () => setPaused(false));
+$('restart').addEventListener('click', startMatch);
+$('leave').addEventListener('click', showLobby);
+$('deuce').addEventListener('change', e => { lobby.deuce = e.target.checked; e.target.blur(); });
+[0, 1].forEach(i => $('pauseName' + i).addEventListener('input', e => setName(i, e.target.value)));
+// 경기 화면의 이름을 누르면 멈추고 이름을 바꿀 수 있어요.
+court.addEventListener('click', e => {
+  if (!match || match.online || match.phase === 'intro' || match.phase === 'over') return;
+  const box = court.getBoundingClientRect();
+  const x = (e.clientX - box.left) / box.width * W, y = (e.clientY - box.top) / box.height * H;
+  const i = Math.abs(x - (W / 2 - 90)) < 90 ? 0 : Math.abs(x - (W / 2 + 90)) < 90 ? 1 : -1;
+  if (i < 0 || Math.abs(y - 146) > 22) return;
+  setPaused(true);
+  $('pauseName' + i).focus();
+  $('pauseName' + i).select();
+});
+$('pauseButton').addEventListener('click', () => setPaused(true));
+$('again').addEventListener('click', () => { if (match && match.online) Online.rematch(); else startMatch(); });
+
+const FRAME = 1000 / 60;
+let last = 0, spare = 0;
+function loop(now) {
+  requestAnimationFrame(loop);
+  spare = Math.min(spare + now - last, FRAME * 5);
+  last = now;
+  if (!match) return;
+  if (match.online) {
+    Online.frame();
+    render(match, fx);
+    return;
+  }
+  if (paused || tuning()) {
+    spare = 0;
+    render(match, fx);
+    return;
+  }
+  while (spare >= FRAME) {
+    step(match, [0, 1].map(i => match.ai[i] ? aiInput(match, i) : readInput(i)));
+    if (match.phase === 'play') {
+      fx.trail.push({ x: match.balls[0].x, y: match.balls[0].y });
+      if (fx.trail.length > 8) fx.trail.shift();
+    }
+    if (fx.shake > 0) fx.shake = fx.shake < 0.5 ? 0 : fx.shake * 0.85;
+    fx.age++;
+    if (match.phase === 'intro' && fx.age === 26) beep(180, 0.3, 'sawtooth');
+    if (match.phase === 'over' && fx.age === 70) { $('over').hidden = false; $('again').focus(); }
+    playEvents(match, fx);
+    if (!match) return;
+    spare -= FRAME;
+  }
+  render(match, fx);
+}
+
+lobby.names = loadNames();
+buildTuner();
+renderLobby();
+drawHome();
+$('playHere').focus();
+if (document.fonts) document.fonts.ready.then(() => { renderLobby(); drawHome(); });
+requestAnimationFrame(loop);
+</script>
+<script src="online.js"></script>
+</body>
+</html>
