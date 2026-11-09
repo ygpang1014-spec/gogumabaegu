@@ -78,7 +78,15 @@ kbd {
 .levels button[aria-pressed="true"] { border-color: var(--seat); color: var(--seat); }
 .ready:disabled { cursor: default; opacity: .85; }
 .seat .who { font-size: 18px; }
-.picker { display: grid; grid-template-columns: 44px 96px 44px; justify-content: center; align-items: center; gap: 12px; }
+.picker { display: grid; grid-template-columns: 44px 96px 44px auto; justify-content: center; align-items: center; gap: 12px; }
+.picker .allButton { font-size: 14px; padding: 0 10px; }
+.charGrid { display: none; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.charGrid button { background: transparent; border: 2px solid var(--line); border-radius: 6px; padding: 4px 0 6px; display: grid; justify-items: center; gap: 2px; font-size: 14px; }
+.charGrid button[aria-pressed="true"] { border-color: var(--seat); color: var(--seat); }
+.charGrid canvas { width: 100%; max-width: 72px; height: auto; aspect-ratio: 96 / 112; }
+.seat.gridOpen .charGrid { display: grid; }
+.seat.gridOpen .picker > :not(.allButton), .seat.gridOpen .ability, .seat.gridOpen .keys { display: none; }
+.seat.gridOpen .picker { grid-template-columns: auto; }
 .picker canvas { width: 96px; height: 112px; }
 .picker button { background: transparent; border: 2px solid var(--line); border-radius: 6px; height: 44px; font-size: 18px; }
 .ability { margin: 0; padding-left: 18px; min-height: 8.5em; }
@@ -175,13 +183,15 @@ kbd {
   <div class="seats">
     <article class="seat p1">
       <header><h2 id="roomName0"></h2><span class="who" id="roomWho0"></span></header>
-      <div class="picker"><button class="roomPick" data-seat="0" data-step="-1" aria-label="이전 캐릭터">◀</button><canvas id="roomPreview0" width="192" height="224"></canvas><button class="roomPick" data-seat="0" data-step="1" aria-label="다음 캐릭터">▶</button></div>
+      <div class="picker"><button class="roomPick" data-seat="0" data-step="-1" aria-label="이전 캐릭터">◀</button><canvas id="roomPreview0" width="192" height="224"></canvas><button class="roomPick" data-seat="0" data-step="1" aria-label="다음 캐릭터">▶</button><button class="allButton roomAll" data-seat="0">전체 보기</button></div>
+      <div class="charGrid" id="roomGrid0"></div>
       <ul class="ability" id="roomAbility0"></ul>
       <button class="ready" id="roomReady0" aria-pressed="false"></button>
     </article>
     <article class="seat p2">
       <header><h2 id="roomName1"></h2><span class="who" id="roomWho1"></span></header>
-      <div class="picker"><button class="roomPick" data-seat="1" data-step="-1" aria-label="이전 캐릭터">◀</button><canvas id="roomPreview1" width="192" height="224"></canvas><button class="roomPick" data-seat="1" data-step="1" aria-label="다음 캐릭터">▶</button></div>
+      <div class="picker"><button class="roomPick" data-seat="1" data-step="-1" aria-label="이전 캐릭터">◀</button><canvas id="roomPreview1" width="192" height="224"></canvas><button class="roomPick" data-seat="1" data-step="1" aria-label="다음 캐릭터">▶</button><button class="allButton roomAll" data-seat="1">전체 보기</button></div>
+      <div class="charGrid" id="roomGrid1"></div>
       <ul class="ability" id="roomAbility1"></ul>
       <button class="ready" id="roomReady1" aria-pressed="false"></button>
     </article>
@@ -210,7 +220,8 @@ kbd {
     <article class="seat p1">
       <header><h2><button class="seatName" id="seatName0" data-seat="0">1P</button><input class="nameEdit" id="nameEdit0" maxlength="8" aria-label="1P 이름" hidden></h2><span class="who" id="who0"></span></header>
       <p class="hint" id="hint0"></p>
-      <div class="picker"><button data-seat="0" data-step="-1" aria-label="1P 이전 캐릭터">◀</button><canvas id="preview0" width="192" height="224"></canvas><button data-seat="0" data-step="1" aria-label="1P 다음 캐릭터">▶</button></div>
+      <div class="picker"><button data-seat="0" data-step="-1" aria-label="1P 이전 캐릭터">◀</button><canvas id="preview0" width="192" height="224"></canvas><button data-seat="0" data-step="1" aria-label="1P 다음 캐릭터">▶</button><button class="allButton" data-seat="0" id="all0">전체 보기</button></div>
+      <div class="charGrid" id="grid0"></div>
       <ul class="ability" id="ability0"></ul>
       <div class="levels" id="levels0" data-seat="0" hidden><button data-level="easy">쉬움</button><button data-level="normal">보통</button><button data-level="hard">어려움</button></div>
       <dl class="keys" id="keys0">
@@ -225,7 +236,8 @@ kbd {
     <article class="seat p2">
       <header><h2><button class="seatName" id="seatName1" data-seat="1">2P</button><input class="nameEdit" id="nameEdit1" maxlength="8" aria-label="2P 이름" hidden></h2><span class="who" id="who1"></span></header>
       <p class="hint" id="hint1"></p>
-      <div class="picker"><button data-seat="1" data-step="-1" aria-label="2P 이전 캐릭터">◀</button><canvas id="preview1" width="192" height="224"></canvas><button data-seat="1" data-step="1" aria-label="2P 다음 캐릭터">▶</button></div>
+      <div class="picker"><button data-seat="1" data-step="-1" aria-label="2P 이전 캐릭터">◀</button><canvas id="preview1" width="192" height="224"></canvas><button data-seat="1" data-step="1" aria-label="2P 다음 캐릭터">▶</button><button class="allButton" data-seat="1" id="all1">전체 보기</button></div>
+      <div class="charGrid" id="grid1"></div>
       <ul class="ability" id="ability1"></ul>
       <div class="levels" id="levels1" data-seat="1" hidden><button data-level="easy">쉬움</button><button data-level="normal">보통</button><button data-level="hard">어려움</button></div>
       <dl class="keys" id="keys1">
@@ -321,6 +333,8 @@ function drawBody(c, char) {
     c.ellipse(0, -38, 33, 38, 0, 0, Math.PI * 2);
   } else if (char.id === 'cabbage') {
     c.arc(0, -36, 34, 0, Math.PI * 2);
+  } else if (char.id === 'tomato') {
+    c.ellipse(0, -36, 35, 33, 0, 0, Math.PI * 2);
   } else {
     c.arc(0, -36, char.id === 'coconut' ? 35 : 31, 0, Math.PI * 2);
   }
@@ -336,6 +350,8 @@ function drawBody(c, char) {
   } else if (char.id === 'cabbage') {
     c.beginPath(); c.moveTo(-30, -56); c.quadraticCurveTo(0, -84, 30, -56); c.stroke();
     c.beginPath(); c.moveTo(-34, -30); c.quadraticCurveTo(-16, -8, 0, -2); c.stroke();
+  } else if (char.id === 'tomato') {
+    drawLeaves(c, 0, -68, 1);
   } else if (char.id === 'coconut') {
     for (let a = -2.7; a < -0.4; a += 0.28) {
       c.beginPath(); c.moveTo(Math.cos(a) * 34, -36 + Math.sin(a) * 34); c.lineTo(Math.cos(a) * 41, -36 + Math.sin(a) * 41); c.stroke();
@@ -344,6 +360,19 @@ function drawBody(c, char) {
     c.fillStyle = k.edge;
     c.beginPath(); c.moveTo(-11, -66); c.lineTo(-6, -74); c.lineTo(0, -68); c.lineTo(6, -74); c.lineTo(11, -66); c.closePath(); c.fill();
   }
+}
+
+// 토마토 꼭지: 별 모양 초록 잎
+function drawLeaves(c, x, y, k) {
+  c.fillStyle = '#4f9a3a';
+  c.beginPath();
+  for (let n = 0; n < 10; n++) {
+    const a = -Math.PI / 2 + n * Math.PI / 5, r = (n % 2 ? 4 : 13) * k;
+    c.lineTo(x + Math.cos(a) * r, y + Math.sin(a) * r * 0.55);
+  }
+  c.closePath();
+  c.fill();
+  c.fillRect(x - 1.5 * k, y - 9 * k, 3 * k, 8 * k);
 }
 
 function drawFood(c, x, y, o) {
@@ -531,9 +560,11 @@ function drawBall(s, fx) {
     ctx.beginPath();
     ctx.ellipse(b.x, GROUND + 7, Math.max(6, 22 - (GROUND - b.y) / 40), 5, 0, 0, Math.PI * 2);
     ctx.fill();
-    // 느려진 공은 파랗게, 빨라진 공은 빨갛게 보여요
-    const slowed = b.slow < 1 || s.players.some(p => p.slowing);
-    ctx.fillStyle = slowed ? '#a9dcff' : b.slow > 1 ? '#ff6b5e' : COLORS.text;
+    // 감속된 공은 파랗게, 가속된 공은 빨갛게 보여요
+    const slowed = b.slow < 1 || s.players.some(p => p.slowing && p.char.slowScale);
+    const fast = b.slow > 1 || rushing(s, b);
+    if (b.kind === 'tomato') { drawTomatoBall(b, r, slowed, fast); continue; }
+    ctx.fillStyle = slowed ? '#a9dcff' : fast ? '#ff6b5e' : COLORS.text;
     ctx.beginPath(); ctx.arc(b.x, b.y, r, 0, Math.PI * 2); ctx.fill();
     ctx.strokeStyle = COLORS.ember;
     ctx.lineWidth = 3;
@@ -541,6 +572,20 @@ function drawBall(s, fx) {
     ctx.beginPath(); ctx.arc(b.x - r * 1.1, b.y, r * 1.1, -0.8, 0.8); ctx.stroke();
     ctx.beginPath(); ctx.arc(b.x + r * 1.1, b.y, r * 1.1, Math.PI - 0.8, Math.PI + 0.8); ctx.stroke();
   }
+}
+
+function drawTomatoBall(b, r, slowed, fast) {
+  if (fast) {
+    ctx.fillStyle = 'rgba(255, 107, 94, .35)';
+    ctx.beginPath(); ctx.arc(b.x, b.y, r + 9, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.fillStyle = slowed ? '#a9dcff' : fast ? '#ff3b2a' : '#e2412f';
+  ctx.strokeStyle = '#9c2419';
+  ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.arc(b.x, b.y, r, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = 'rgba(255, 255, 255, .35)';
+  ctx.beginPath(); ctx.arc(b.x - r * 0.35, b.y - r * 0.3, r * 0.22, 0, Math.PI * 2); ctx.fill();
+  drawLeaves(ctx, b.x, b.y - r * 0.8, r / 20);
 }
 
 function drawPlayer(p) {
@@ -789,6 +834,10 @@ function playEvents(s, fx) {
     }
     if (e.type === 'over') showOver(e.winner);
     if (e.type === 'stage') beep(740, 0.2, 'triangle');
+    if (e.type === 'pop') {
+      beep(300, 0.12, 'sine');
+      fx.rings.push({ x: e.x, y: GROUND, life: 20, color: '#e2412f' });
+    }
     if (e.type === 'coopEnd') showCoopEnd(s);
   }
   s.events.length = 0;
@@ -884,6 +933,7 @@ function renderLobby() {
       c.fillStyle = COLORS.p[i];
       c.fillText('?', 48, 60);
     } else drawFood(c, 48, 106, { char, facing: i === 0 ? 1 : -1, look: 'side', scarf: COLORS.p[i], swinging: false });
+    renderGrid($('grid' + i), i, lobby.picks[i], slot => setCharacter(i, slot));
     $('ability' + i).replaceChildren(...char.ability.map(line => {
       const li = document.createElement('li');
       li.textContent = line;
@@ -915,10 +965,51 @@ function stepLevel(i, step) {
 }
 
 function pickCharacter(i, step) {
-  if (lobby.ready[i] && !lobby.ai[i]) return;
   const slots = CHARACTERS.length + 1;
-  lobby.picks[i] = (lobby.picks[i] + step + slots) % slots;
+  setCharacter(i, (lobby.picks[i] + step + slots) % slots, true);
+}
+
+function setCharacter(i, slot, keepGrid) {
+  if (lobby.ready[i] && !lobby.ai[i]) return;
+  lobby.picks[i] = slot;
+  if (!keepGrid) showGrid($('grid' + i), false);
   renderLobby();
+}
+
+// 전체 보기: 캐릭터를 네모 칸에 모두 그려서 눌러 고르게 해요. 칸은 처음 한 번만 만들어요.
+function renderGrid(box, i, current, onPick) {
+  if (!box.children.length) {
+    for (let slot = 0; slot <= CHARACTERS.length; slot++) {
+      const char = CHARACTERS[slot] || RANDOM_PICK;
+      const tile = document.createElement('button');
+      tile.dataset.slot = slot;
+      tile.setAttribute('aria-label', char.name);
+      const art = document.createElement('canvas');
+      art.width = 96;
+      art.height = 112;
+      const c = art.getContext('2d');
+      if (char === RANDOM_PICK) {
+        c.font = `64px ${DISPLAY}`;
+        c.textAlign = 'center';
+        c.textBaseline = 'middle';
+        c.fillStyle = COLORS.p[i];
+        c.fillText('?', 48, 60);
+      } else drawFood(c, 48, 106, { char, facing: i === 0 ? 1 : -1, look: 'side', scarf: COLORS.p[i], swinging: false });
+      const name = document.createElement('span');
+      name.textContent = char.name;
+      tile.append(art, name);
+      tile.addEventListener('click', () => { onPick(slot); tile.blur(); });
+      box.append(tile);
+    }
+  }
+  box.querySelectorAll('button').forEach(t => t.setAttribute('aria-pressed', Number(t.dataset.slot) === current));
+}
+
+function showGrid(box, open) {
+  const seat = box.closest('.seat');
+  const on = open === undefined ? !seat.classList.contains('gridOpen') : open;
+  seat.classList.toggle('gridOpen', on);
+  seat.querySelector('.allButton').textContent = on ? '닫기' : '전체 보기';
 }
 
 function toggleReady(i) {
@@ -1102,7 +1193,8 @@ addEventListener('keyup', e => held.delete(e.code));
 
 $('ready0').addEventListener('click', e => { toggleReady(0); e.currentTarget.blur(); });
 $('ready1').addEventListener('click', e => { toggleReady(1); e.currentTarget.blur(); });
-document.querySelectorAll('.picker button').forEach(b => b.addEventListener('click', () => {
+[0, 1].forEach(i => $('all' + i).addEventListener('click', e => { showGrid($('grid' + i)); e.currentTarget.blur(); }));
+document.querySelectorAll('#lobby .picker button[data-step]').forEach(b => b.addEventListener('click', () => {
   pickCharacter(Number(b.dataset.seat), Number(b.dataset.step));
   b.blur();
 }));

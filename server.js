@@ -111,7 +111,7 @@ function snapshot(room) {
       out.swing = p.swing && { dir: p.swing.dir, age: p.swing.age };
       return out;
     }),
-    b: s.balls.map(b => ({ x: b.x, y: b.y, slow: b.slow })),
+    b: s.balls.map(b => ({ x: b.x, y: b.y, slow: b.slow, kind: b.kind, owner: b.owner })),
     score: s.score, phase: s.phase, timer: s.timer, server: s.server,
     clock: s.clock, stage: s.stage, cleared: s.cleared, notice: s.notice, env: s.env,
     events,

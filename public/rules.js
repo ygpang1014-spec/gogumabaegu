@@ -38,8 +38,8 @@ const CHARACTERS = [
     colors: { skin: '#f4c430', edge: '#b98a12', face: '#fde88a' },
     groundUpSlow: 0.6,
     gauge: { side: 0.2 },
-    special: 'slowTime', slowScale: 0.3, slowFrames: 300,
-    ability: ['땅에서 위로 치면 공이 느려져요. 뜨는 높이는 같아요.', '점프해서 위로 치면 안 느려져요.', '필살기: 누르는 동안 공이 느려져요. 최대 5초.', '게이지는 좌우 공격으로 차요.'],
+    special: 'slowTime', slowScale: 0.3, slowFrames: 200, // 필살기 최대 길이(프레임)
+    ability: ['땅에서 위로 치면 공이 감속돼요(파란색). 뜨는 높이는 같아요.', '점프해서 위로 치면 감속되지 않아요.', '필살기: 누르는 동안 모든 공이 감속돼요. 최대 약 3.3초.', '게이지는 좌우 공격으로 차요.'],
   },
   {
     ...BASE, id: 'watermelon', name: '수박',
@@ -55,7 +55,7 @@ const CHARACTERS = [
     zoneScale: 1.2,
     gauge: { side: 0.34 },
     special: 'wide', wideReach: 60, wideSpeed: 13,
-    ability: ['모든 공격의 범위가 조금 넓어요.', '필살기: 바로 공격해요. 범위가 내 코트 전체지만 높이는 맞아야 해요.', '필살기에 맞은 공은 무조건 빠르게 상대 코트로 넘어가요.', '게이지는 좌우 공격으로 차요.'],
+    ability: ['모든 공격의 범위가 조금 넓어요.', '필살기: 바로 공격해요. 범위가 내 코트 전체지만 높이는 맞아야 해요.', '필살기에 맞은 공은 무조건 상대 코트로 빠르게 넘어가요.', '게이지는 좌우 공격으로 차요.'],
   },
   {
     ...BASE, id: 'coconut', name: '코코넛',
@@ -72,7 +72,15 @@ const CHARACTERS = [
     colors: { skin: '#3f4fa8', edge: '#28316e', face: '#c8d0f5' },
     autoGauge: 150,
     special: 'dash', dashFrames: 16, dashSpeed: 14, dashR: 44, dashBoost: 1.6, dashBoostFrames: 90,
-    ability: ['이동이 조금 빠른 대신 공격 범위가 조금 작아요.', '스킬: 보는 쪽으로 대시하고, 공에 닿으면 좌우 공격이 돼요.', '대시로 친 공은 빨갛게 변하고 잠깐 빨라져요.', '게이지는 2.5초면 저절로 차요.'],
+    ability: ['이동이 조금 빠른 대신 공격 범위가 조금 작아요.', '스킬: 보는 쪽으로 대시하고, 공에 닿으면 좌우 공격이 돼요.', '대시로 친 공은 잠깐 가속돼요(빨간색).', '게이지는 2.5초면 저절로 차요.'],
+  },
+  {
+    ...BASE, id: 'tomato', name: '토마토',
+    colors: { skin: '#e2412f', edge: '#9c2419', face: '#ffd0c4' },
+    tomatoBall: { gravity: 0.6 }, // 토마토공 중력: 보통 공의 0.6배
+    gauge: { tomatoSide: 0.2 },   // 토마토공을 좌우 공격으로 칠 때만 차요
+    special: 'tomatoRush', rushScale: 1.3, slowFrames: 200,
+    ability: ['상대가 서브할 때 내 코트에 토마토공이 하나 더 내려와요.', '토마토공은 천천히 떨어져요. 상대 코트에 떨어지면 내 득점, 내 코트에 떨어지면 그냥 사라져요.', '둘 다 토마토공을 칠 수 있어요.', '필살기: 누르는 동안 토마토공만 가속돼요(보통 공 속도쯤). 최대 약 3.3초.', '게이지는 토마토공을 좌우 공격으로 칠 때 차요.'],
   },
 ];
 
@@ -154,6 +162,10 @@ function resetRound(s) {
   s.players = s.players.map((prev, i) => makePlayer(i, s.chars[i], prev));
   s.balls = [makeBall(s.server === 0 ? 240 : 720)];
   syncBalls(s);
+  // 토마토: 상대가 서브할 때 내 코트에도 토마토공이 내려와요. 공지키기에서는 없어요.
+  if (s.mode !== 'coop') s.players.forEach(p => {
+    if (p.char.tomatoBall && s.server !== p.side) s.balls.push(makeTomato(p));
+  });
   s.touch++;
   s.rally = 0;
   s.phase = 'ready';
@@ -164,10 +176,16 @@ function makeBall(x) {
   return { x, y: BALL.serveHeight, vx: 0, vy: 0, slow: 1 };
 }
 
-// 공 개수를 설정에 맞춰요. 새 공은 양쪽 코트에 번갈아 떨어져요.
+function makeTomato(p) {
+  return { ...makeBall(p.side === 0 ? 240 : 720), kind: 'tomato', owner: p.side, grav: p.char.tomatoBall.gravity };
+}
+
+// 공 개수를 설정에 맞춰요. 새 공은 양쪽 코트에 번갈아 떨어져요. 토마토공은 세지 않아요.
 function syncBalls(s) {
-  while (s.balls.length < s.env.count) s.balls.push(makeBall(s.balls.length % 2 ? 720 : 240));
-  s.balls.length = s.env.count;
+  const normal = s.balls.filter(b => !b.kind), extra = s.balls.filter(b => b.kind);
+  while (normal.length < s.env.count) normal.push(makeBall(normal.length % 2 ? 720 : 240));
+  normal.length = s.env.count;
+  s.balls = normal.concat(extra);
 }
 
 function hitZone(p) {
@@ -198,7 +216,8 @@ function inSwingRange(s, p, b) {
   return Math.hypot(b.x - z.x, b.y - z.y) < z.r + s.env.ballR;
 }
 
-function addGauge(p, shot) {
+function addGauge(p, shot, b) {
+  if (b && b.kind === 'tomato') shot = 'tomato' + shot[0].toUpperCase() + shot.slice(1);
   const fill = p.char.gauge && p.char.gauge[shot];
   if (fill && p.rage === 0 && !p.slowing) p.gauge = Math.min(1, p.gauge + fill);
 }
@@ -211,7 +230,7 @@ function wideShot(s, p, b) {
     let best = null, soonest = Infinity;
     for (let speed = p.char.wideSpeed; speed >= 3; speed -= 2) {
       for (let vy = -3; vy >= -19; vy--) {
-        const end = predict({ x: b.x, y: b.y, vx: speed * toward, vy, ghost }, s.env.speed, s.env);
+        const end = predict({ x: b.x, y: b.y, vx: speed * toward, vy, ghost, grav: b.grav }, s.env.speed, s.env);
         if ((end.x - NET.x) * toward <= 0) continue;
         const cross = end.path.findIndex(spot => !onMySide(p, spot.x));
         if (cross < soonest) { best = { vx: speed * toward, vy, ghost }; soonest = cross; }
@@ -240,7 +259,7 @@ function sendBall(s, p, b, dir, power, slow) {
   b.hist = [];
   s.touch++;
   s.rally++;
-  addGauge(p, dir);
+  addGauge(p, dir, b);
   s.events.push({ type: 'hit', dir, x: b.x, y: b.y });
 }
 
@@ -320,7 +339,7 @@ function updateSpecial(s, p, input) {
     p.rage--;
     p.gauge = p.rage / c.rageFrames;
   }
-  if (c.special === 'slowTime') {
+  if (c.special === 'slowTime' || c.special === 'tomatoRush') {
     if (p.slowing && (!input.special || p.gauge <= 0 || s.phase !== 'play')) p.slowing = false;
     else if (!p.slowing && input.specialPressed && p.gauge >= 1 && s.phase === 'play') {
       p.slowing = true;
@@ -409,13 +428,21 @@ function collideNet(b, env) {
 
 // 궤적은 그대로 두고 시간만 조절해서 뜨는 높이가 변하지 않아요.
 function ballTime(s, b) {
-  const field = Math.min(...s.players.map(p => p.slowing ? p.char.slowScale : 1));
-  return (field < 1 ? Math.min(b.slow, field) : b.slow) * s.env.speed;
+  const field = Math.min(...s.players.map(p => p.slowing && p.char.slowScale ? p.char.slowScale : 1));
+  let time = field < 1 ? Math.min(b.slow, field) : b.slow;
+  if (rushing(s, b)) time *= s.players[b.owner].char.rushScale;
+  return time * s.env.speed;
+}
+
+// 토마토 필살기로 토마토공이 가속되는 중인지
+function rushing(s, b) {
+  const p = b.kind === 'tomato' && s.players[b.owner];
+  return !!p && p.slowing && p.char.special === 'tomatoRush';
 }
 
 function advanceBall(b, time, env) {
   const r = env.ballR;
-  b.vy += env.gravity * time;
+  b.vy += env.gravity * (b.grav || 1) * time;
   b.vx += env.windNow * time;
   const speed = Math.hypot(b.vx, b.vy);
   if (speed > BALL.maxSpeed) { b.vx *= BALL.maxSpeed / speed; b.vy *= BALL.maxSpeed / speed; }
@@ -449,7 +476,7 @@ function ballLanded(s, b) {
 }
 
 function updateBalls(s) {
-  for (const b of s.balls) {
+  for (const b of s.balls.slice()) {
     if (s.lag) {
       b.hist = b.hist || [];
       b.hist.unshift({ x: b.x, y: b.y });
@@ -459,6 +486,12 @@ function updateBalls(s) {
     advanceBall(b, ballTime(s, b), s.env);
     if (b.y + s.env.ballR >= GROUND) {
       b.y = GROUND - s.env.ballR;
+      // 토마토공이 토마토 코트에 떨어지면 그냥 사라져요.
+      if (b.kind === 'tomato' && onMySide(s.players[b.owner], b.x)) {
+        s.balls.splice(s.balls.indexOf(b), 1);
+        s.events.push({ type: 'pop', x: b.x });
+        continue;
+      }
       ballLanded(s, b);
       if (s.phase !== 'play') return;
     }
@@ -558,7 +591,7 @@ function currentPower(p) {
 
 function scoreShot(s, p, b, dir) {
   const shot = p.char.shots[dir], power = currentPower(p);
-  const end = predict({ x: b.x, y: b.y, vx: shot.vx * power * p.facing, vy: shot.vy * power }, s.env.speed, s.env);
+  const end = predict({ x: b.x, y: b.y, vx: shot.vx * power * p.facing, vy: shot.vy * power, grav: b.grav }, s.env.speed, s.env);
   if (s.mode === 'coop') return dir === 'down' ? -100 : 50 + end.t;
   if (onMySide(p, end.x)) return dir === 'up' ? 20 : -100;
   return 100 + Math.abs(end.x - s.players[1 - p.side].x) * 0.1 + (dir === 'down' ? 30 : 0) - end.t * 0.1;
@@ -585,7 +618,9 @@ function aiFocus(s, p) {
   let best = s.balls[0], soonest = Infinity;
   for (const b of s.balls) {
     const end = predict(b, ballTime(s, b), s.env);
-    if (onMySide(p, end.x) && end.t < soonest) { best = b; soonest = end.t; }
+    // 내 토마토공은 급한 공이 없을 때만 쳐서 넘겨요.
+    const t = b.kind === 'tomato' && b.owner === p.side ? end.t + 1000 : end.t;
+    if (onMySide(p, end.x) && t < soonest) { best = b; soonest = t; }
   }
   return best;
 }
@@ -616,8 +651,10 @@ function aiContact(s, p, input, ai, toward, urgent) {
 
 function aiSpecial(s, p, input, ai, toward, pressed) {
   const c = p.char, b = ai.ball || s.balls[0];
+  const tomato = s.balls.find(x => x.kind === 'tomato' && x.owner === p.side);
+  const away = !!tomato && !onMySide(p, tomato.x) && tomato.vy > 0; // 상대 코트로 떨어지는 중
   if (!c.special || p.gauge < 1 || s.phase !== 'play') {
-    input.special = p.slowing && pressed;
+    input.special = p.slowing && (c.special === 'tomatoRush' ? away : pressed);
     return;
   }
   if (Math.random() >= ai.level.special) return;
@@ -625,6 +662,7 @@ function aiSpecial(s, p, input, ai, toward, pressed) {
   let use = false;
   if (c.special === 'rage') use = mine;
   else if (c.special === 'slowTime') use = pressed;
+  else if (c.special === 'tomatoRush') use = away;
   else if (c.special === 'wide') {
     const z = wideZone(p);
     use = mine && b.y >= z.top && b.y <= z.bottom && onMySide(p, b.x);

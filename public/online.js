@@ -117,7 +117,7 @@ const Online = (() => {
     s.goal.balls = m.b;
     s.balls.length = m.b.length;
     m.b.forEach((b, i) => {
-      if (!s.balls[i] || Math.hypot(s.balls[i].x - b.x, s.balls[i].y - b.y) > 150) s.balls[i] = { ...b };
+      if (!s.balls[i] || s.balls[i].kind !== b.kind || Math.hypot(s.balls[i].x - b.x, s.balls[i].y - b.y) > 150) s.balls[i] = { ...b };
       s.balls[i].slow = b.slow;
     });
     s.score = m.score;
@@ -218,7 +218,9 @@ const Online = (() => {
         li.textContent = line;
         return li;
       }));
-      document.querySelectorAll(`.roomPick[data-seat="${i}"]`).forEach(b => { b.hidden = !mine; });
+      document.querySelectorAll(`.roomPick[data-seat="${i}"], .roomAll[data-seat="${i}"]`).forEach(b => { b.hidden = !mine; });
+      if (!mine) showGrid($('roomGrid' + i), false);
+      if (seat) renderGrid($('roomGrid' + i), i, seat.pick, choose);
       const ready = $('roomReady' + i);
       ready.disabled = !mine;
       ready.setAttribute('aria-pressed', !!(seat && seat.ready));
@@ -246,6 +248,14 @@ const Online = (() => {
     if (!seat || seat.ready) return;
     const slots = CHARACTERS.length + 1;
     post({ t: 'pick', pick: (seat.pick + step + slots) % slots });
+  }
+
+  // 전체 보기 칸을 눌러 바로 골라요.
+  function choose(slot) {
+    const seat = room.seats[room.seat];
+    if (!seat || seat.ready) return;
+    showGrid($('roomGrid' + room.seat), false);
+    post({ t: 'pick', pick: slot });
   }
 
   function myName() {
@@ -301,6 +311,7 @@ const Online = (() => {
   $('joinCode').addEventListener('keydown', e => { if (e.code === 'Enter') $('joinRoom').click(); });
   $('roomLeave').addEventListener('click', () => post({ t: 'leave' }));
   [0, 1].forEach(i => $('roomReady' + i).addEventListener('click', e => { post({ t: 'ready' }); e.currentTarget.blur(); }));
+  document.querySelectorAll('.roomAll').forEach(b => b.addEventListener('click', e => { showGrid($('roomGrid' + b.dataset.seat)); e.currentTarget.blur(); }));
   document.querySelectorAll('.roomPick').forEach(b => b.addEventListener('click', e => { pick(Number(b.dataset.step)); e.currentTarget.blur(); }));
   $('roomMode').addEventListener('click', e => {
     const i = ONLINE_MODES.findIndex(x => x.id === room.mode);
