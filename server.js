@@ -15,7 +15,10 @@ const ONLINE_MODES = ['versus', 'coop'];
 const TARGETS = [7, 11, 15];
 
 const INPUT = { left: 1, right: 2, up: 4, down: 8, jump: 16, attack: 32, special: 64 };
-const PLAYER_FIELDS = ['x', 'y', 'facing', 'look', 'onGround', 'gauge', 'rage', 'charge', 'slowing', 'dash', 'dive', 'spike'];
+const PLAYER_FIELDS = ['x', 'y', 'vy', 'facing', 'look', 'onGround', 'gauge', 'rage', 'charge', 'slowing', 'dash', 'dashSpent', 'dive', 'lock', 'spike', 'cooldown', 'contactGap'];
+const MAX_LAG_FRAMES = 12;
+// 시험용: TEST_LAG=100 이면 오가는 메시지를 100ms씩 늦춰 느린 인터넷을 흉내 내요.
+const TEST_LAG = Number(process.env.TEST_LAG) || 0;
 
 const rooms = new Map();
 
@@ -32,7 +35,10 @@ const server = http.createServer((req, res) => {
 });
 
 function send(ws, message) {
-  if (ws && ws.readyState === 1) ws.send(JSON.stringify(message));
+  if (!ws || ws.readyState !== 1) return;
+  const text = JSON.stringify(message);
+  if (TEST_LAG) setTimeout(() => ws.readyState === 1 && ws.send(text), TEST_LAG);
+  else ws.send(text);
 }
 
 function broadcast(room, message) {
@@ -47,7 +53,7 @@ function newCode() {
 }
 
 function makeSeat(ws, name) {
-  return { ws, name: cleanName(name), pick: 0, ready: false, mask: 0, attack: false, special: false, again: false };
+  return { ws, name: cleanName(name), pick: 0, ready: false, mask: 0, attack: false, special: false, again: false, seq: 0, seqAge: 0, rtt: 0 };
 }
 
 function cleanName(name) {
@@ -89,10 +95,12 @@ function readSeat(seat) {
   };
   seat.attack = false;
   seat.special = false;
+  seat.seqAge++;
   return input;
 }
 
-function snapshot(s) {
+function snapshot(room) {
+  const s = room.match;
   const events = s.events.slice();
   s.events.length = 0;
   return {
@@ -107,6 +115,8 @@ function snapshot(s) {
     score: s.score, phase: s.phase, timer: s.timer, server: s.server,
     clock: s.clock, stage: s.stage, cleared: s.cleared, notice: s.notice, env: s.env,
     events,
+    ack: room.seats.map(seat => [seat.seq, seat.seqAge]),
+    ping: room.seats.map(seat => Math.round(seat.rtt)),
   };
 }
 
@@ -154,8 +164,13 @@ function handle(ws, msg) {
   } else if (msg.t === 'leave') {
     leaveRoom(ws);
     send(ws, { t: 'closed' });
+  } else if (msg.t === 'pong') {
+    const sample = Math.min(400, Math.max(0, Date.now() - Number(msg.s)));
+    if (sample >= 0) seat.rtt = seat.rtt ? seat.rtt * 0.7 + sample * 0.3 : sample;
   } else if (msg.t === 'i') {
     const mask = Number(msg.m) & 127;
+    seat.seq = Number(msg.n) || 0;
+    seat.seqAge = 0;
     if (mask & ~seat.mask & INPUT.attack) seat.attack = true;
     if (mask & ~seat.mask & INPUT.special) seat.special = true;
     seat.mask = mask;
@@ -187,13 +202,14 @@ function tick() {
     if (!room.match || room.overSent) continue; // 끝난 경기는 더 보낼 게 없어요
     room.spare = Math.min(room.spare + now - room.last, FRAME * 6);
     room.last = now;
+    // 왕복 시간만큼 공을 되돌려 보고 맞았는지 판정해요.
+    room.match.lag = room.seats.map(seat => Math.min(MAX_LAG_FRAMES, Math.round(seat.rtt / FRAME) + 2));
     while (room.spare >= FRAME) {
       rules.step(room.match, room.seats.map(readSeat));
       room.spare -= FRAME;
-      if (++room.frame % 2 === 0) {
-        broadcast(room, snapshot(room.match));
-        room.overSent = room.match.phase === 'over';
-      }
+      room.frame++;
+      broadcast(room, snapshot(room));
+      room.overSent = room.match.phase === 'over';
     }
   }
 }
@@ -207,7 +223,9 @@ wss.on('connection', ws => {
   ws.on('message', data => {
     let msg;
     try { msg = JSON.parse(data); } catch (e) { return; }
-    if (msg && typeof msg === 'object') handle(ws, msg);
+    if (!msg || typeof msg !== 'object') return;
+    if (TEST_LAG) setTimeout(() => handle(ws, msg), TEST_LAG);
+    else handle(ws, msg);
   });
 });
 
@@ -220,5 +238,9 @@ setInterval(() => {
   });
 }, 20000);
 setInterval(tick, 8);
+// 1초마다 왕복 시간을 재요.
+setInterval(() => {
+  for (const room of rooms.values()) room.seats.forEach(seat => seat && send(seat.ws, { t: 'ping', s: Date.now() }));
+}, 1000);
 
 server.listen(PORT, () => console.log(`고구마배구 서버: http://localhost:${PORT}`));

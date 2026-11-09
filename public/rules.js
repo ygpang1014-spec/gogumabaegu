@@ -222,6 +222,14 @@ function wideShot(s, p, b) {
   return { vx: 6 * toward, vy: -19, ghost: toward };
 }
 
+// 온라인: 내 화면에 보이던 조금 전 위치의 공에 닿았어도 맞은 걸로 쳐요.
+function touches(s, p, b, test) {
+  if (test(b)) return true;
+  const lag = s.lag && b.hist ? Math.min(s.lag[p.side], b.hist.length) : 0;
+  for (let k = 0; k < lag; k++) if (test(b.hist[k])) return true;
+  return false;
+}
+
 function sendBall(s, p, b, dir, power, slow) {
   const shot = dir === 'wide' ? wideShot(s, p, b) : p.char.shots[dir];
   b.vx = dir === 'wide' ? shot.vx : shot.vx * power * p.facing;
@@ -229,6 +237,7 @@ function sendBall(s, p, b, dir, power, slow) {
   b.ghost = shot.ghost || 0;
   b.slow = slow;
   b.boost = 0;
+  b.hist = [];
   s.touch++;
   s.rally++;
   addGauge(p, dir);
@@ -261,7 +270,7 @@ function updateAttack(s, p, input) {
   if (s.phase === 'play' && p.swing.age < c.swingActive) {
     const slow = c.groundUpSlow && p.swing.dir === 'up' && p.swing.grounded ? c.groundUpSlow : 1;
     for (const b of s.balls) {
-      if (p.swing.struck.includes(b) || !inSwingRange(s, p, b)) continue;
+      if (p.swing.struck.includes(b) || !touches(s, p, b, x => inSwingRange(s, p, x))) continue;
       sendBall(s, p, b, p.swing.dir, p.swing.power, slow);
       p.swing.struck.push(b);
     }
@@ -281,11 +290,12 @@ function updateContact(s, p, input) {
   if (s.phase !== 'play' || p.contactGap > 0) return;
   const reach = c.bodyR + (p.dive > 0 ? 14 : 0);
   const r = s.env.ballR;
-  const b = s.balls.find(x => Math.hypot(x.x - p.x, x.y - (p.y - 38)) < reach + r);
+  const b = s.balls.find(x => touches(s, p, x, y => Math.hypot(y.x - p.x, y.y - (p.y - 38)) < reach + r));
   if (!b) return;
   const toward = p.side === 0 ? 1 : -1;
   b.slow = 1;
   b.boost = 0;
+  b.hist = [];
   s.touch++;
   s.rally++;
   p.contactGap = c.contactGap;
@@ -340,7 +350,7 @@ function updateDash(s, p) {
   p.x += p.facing * c.dashSpeed;
   p.vy = 0;
   if (s.phase === 'play' && !p.dashSpent) {
-    const b = s.balls.find(x => Math.hypot(x.x - p.x, x.y - (p.y - 38)) < c.dashR + s.env.ballR);
+    const b = s.balls.find(x => touches(s, p, x, y => Math.hypot(y.x - p.x, y.y - (p.y - 38)) < c.dashR + s.env.ballR));
     if (b) {
       sendBall(s, p, b, 'side', 1, c.dashBoost);
       b.boost = c.dashBoostFrames;
@@ -440,6 +450,11 @@ function ballLanded(s, b) {
 
 function updateBalls(s) {
   for (const b of s.balls) {
+    if (s.lag) {
+      b.hist = b.hist || [];
+      b.hist.unshift({ x: b.x, y: b.y });
+      if (b.hist.length > 16) b.hist.pop();
+    }
     if (b.boost > 0 && --b.boost === 0) b.slow = 1; // 블루베리가 빠르게 한 공이 원래대로 돌아와요
     advanceBall(b, ballTime(s, b), s.env);
     if (b.y + s.env.ballR >= GROUND) {
@@ -661,4 +676,4 @@ function aiInput(s, i) {
   return input;
 }
 
-if (typeof module !== 'undefined') module.exports = { CHARACTERS, TIMERS, makeMatch, step };
+if (typeof module !== 'undefined') module.exports = { CHARACTERS, TIMERS, makeMatch, step, updatePlayer };

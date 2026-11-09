@@ -1196,6 +1196,7 @@ function loop(now) {
   if (match.online) {
     Online.frame();
     render(match, fx);
+    Online.drawPing();
     return;
   }
   if (paused || tuning()) {

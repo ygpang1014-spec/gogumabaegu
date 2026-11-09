@@ -67,7 +67,7 @@ async function main() {
   const count = a.log.filter(m => m.t === 's').length;
   await wait(1000);
   const rate = a.log.filter(m => m.t === 's').length - count;
-  check(`초당 상태 전송 약 30번 (${rate})`, rate >= 24 && rate <= 34);
+  check(`초당 상태 전송 약 60번 (${rate})`, rate >= 50 && rate <= 66);
 
   // 아무도 안 치면 7점이 나서 끝나요.
   for (let i = 0; i < 80 && a.last.s.phase !== 'over'; i++) await wait(500);
