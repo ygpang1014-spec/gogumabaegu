@@ -8,6 +8,7 @@ const Online = (() => {
   let ws = null, room = null, pendingOpen = null;
   let lastMask = 0, seq = 0, tapAttack = false, tapSpecial = false;
   let history = [], spare = 0, last = 0, ping = 0;
+  let keySet = 0; // 내가 1P 키(0)와 2P 키(1) 중 어느 쪽을 쓰는지
 
   function show(id) {
     SECTIONS.forEach(name => { $(name).hidden = name !== id; });
@@ -282,6 +283,10 @@ const Online = (() => {
     post({ t: 'i', m: mask, n: ++seq });
   }
 
+  addEventListener('keydown', e => {
+    const set = KEYS.findIndex(k => Object.values(k).includes(e.code));
+    if (set >= 0) keySet = set;
+  });
   addEventListener('keydown', syncInput);
   addEventListener('keyup', syncInput);
   addEventListener('blur', syncInput);
@@ -307,6 +312,8 @@ const Online = (() => {
 
   return {
     open, frame, handleKey, drawPing,
+    // 온라인에서는 내가 실제로 쓰는 키를 알려주고, 상대 게이지에는 키를 적지 않아요.
+    specialLabel: side => side !== (room ? room.seat : 0) ? '가득' : KEYS[keySet].special === 'KeyQ' ? 'Q' : 'P',
     rematch() { $('over').hidden = true; post({ t: 'again' }); },
     leave() { post({ t: 'leave' }); },
   };

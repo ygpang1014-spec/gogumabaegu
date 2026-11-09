@@ -70,9 +70,9 @@ const CHARACTERS = [
     ...BASE, id: 'blueberry', name: '블루베리',
     move: 6.2, zoneScale: 0.85,
     colors: { skin: '#3f4fa8', edge: '#28316e', face: '#c8d0f5' },
-    autoGauge: 90,
+    autoGauge: 150,
     special: 'dash', dashFrames: 16, dashSpeed: 14, dashR: 44, dashBoost: 1.6, dashBoostFrames: 90,
-    ability: ['이동이 조금 빠른 대신 공격 범위가 조금 작아요.', '스킬: 보는 쪽으로 대시하고, 공에 닿으면 좌우 공격이 돼요.', '대시로 친 공은 빨갛게 변하고 잠깐 빨라져요.', '게이지는 1.5초면 저절로 차요.'],
+    ability: ['이동이 조금 빠른 대신 공격 범위가 조금 작아요.', '스킬: 보는 쪽으로 대시하고, 공에 닿으면 좌우 공격이 돼요.', '대시로 친 공은 빨갛게 변하고 잠깐 빨라져요.', '게이지는 2.5초면 저절로 차요.'],
   },
 ];
 

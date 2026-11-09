@@ -513,7 +513,8 @@ function drawGauge(p) {
     ctx.font = `15px ${DISPLAY}`;
     ctx.textAlign = p.side === 0 ? 'left' : 'right';
     ctx.fillStyle = COLORS.flesh;
-    ctx.fillText(p.side === 0 ? 'Q' : 'P', p.side === 0 ? x : x + 14, top - 14);
+    const label = match && match.online ? Online.specialLabel(p.side) : p.side === 0 ? 'Q' : 'P';
+    ctx.fillText(label, p.side === 0 ? x : x + 14, top - 14);
     ctx.textAlign = 'center';
   }
 }
