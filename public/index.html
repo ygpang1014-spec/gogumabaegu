@@ -205,7 +205,7 @@ kbd {
       <label class="deuce"><input type="checkbox" id="roomDeuce">듀스</label>
     </div>
   </div>
-  <p class="note">방을 만든 사람이 규칙을 정해요. 이동 키로 캐릭터를 고르고 공격 키로 준비해요.</p>
+  <p class="note">방을 만든 사람이 규칙을 정해요. 이동 키(A·D, K·;)나 ←→ 키로 캐릭터를 고르고 공격 키로 준비해요.</p>
 </section>
 
 <section id="lobby" hidden>
@@ -562,7 +562,7 @@ function drawBall(s, fx) {
     ctx.fill();
     // 감속된 공은 파랗게, 가속된 공은 빨갛게 보여요
     const slowed = b.slow < 1 || s.players.some(p => p.slowing && p.char.slowScale);
-    const fast = b.slow > 1 || rushing(s, b);
+    const fast = b.slow > 1;
     if (b.kind === 'tomato') { drawTomatoBall(b, r, slowed, fast); continue; }
     ctx.fillStyle = slowed ? '#a9dcff' : fast ? '#ff6b5e' : COLORS.text;
     ctx.beginPath(); ctx.arc(b.x, b.y, r, 0, Math.PI * 2); ctx.fill();

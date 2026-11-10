@@ -8,6 +8,7 @@ const Online = (() => {
   let ws = null, room = null, pendingOpen = null;
   let lastMask = 0, seq = 0, tapAttack = false, tapSpecial = false;
   let history = [], spare = 0, last = 0, ping = 0;
+  let wantPick = null; // 서버 답을 기다리는 내 캐릭터 선택
   let keySet = 0; // 내가 1P 키(0)와 2P 키(1) 중 어느 쪽을 쓰는지
 
   function show(id) {
@@ -47,6 +48,7 @@ const Online = (() => {
     $('restart').hidden = false;
     document.querySelector('.names').hidden = false;
     lastMask = 0;
+    wantPick = null;
     history = [];
   }
 
@@ -57,6 +59,12 @@ const Online = (() => {
     if (m.t === 'left') { clearGame(); status(''); room = room && { ...room, notice: '상대가 나갔어요. 코드를 알려주면 다시 들어올 수 있어요.' }; }
     if (m.t === 'room') {
       room = { ...m, notice: room && room.code === m.code && m.seats.includes(null) ? room.notice : '' };
+      // 빠르게 여러 번 고르면 서버 답이 늦게 와도 마지막으로 고른 캐릭터를 보여줘요.
+      const mine = room.seats[room.seat];
+      if (wantPick !== null && mine) {
+        if (mine.pick === wantPick || mine.ready) wantPick = null;
+        else mine.pick = wantPick;
+      }
       if (!match) { show('room'); renderRoom(); }
     }
     if (m.t === 'start') startGame(m);
@@ -247,7 +255,13 @@ const Online = (() => {
     const seat = room.seats[room.seat];
     if (!seat || seat.ready) return;
     const slots = CHARACTERS.length + 1;
-    post({ t: 'pick', pick: (seat.pick + step + slots) % slots });
+    setPick((seat.pick + step + slots) % slots);
+  }
+
+  function setPick(slot) {
+    room.seats[room.seat].pick = wantPick = slot;
+    post({ t: 'pick', pick: slot });
+    renderRoom();
   }
 
   // 전체 보기 칸을 눌러 바로 골라요.
@@ -255,7 +269,7 @@ const Online = (() => {
     const seat = room.seats[room.seat];
     if (!seat || seat.ready) return;
     showGrid($('roomGrid' + room.seat), false);
-    post({ t: 'pick', pick: slot });
+    setPick(slot);
   }
 
   function myName() {
@@ -276,8 +290,8 @@ const Online = (() => {
     if (!$('online').hidden) return true;
     if (!room || match) return false;
     if (e.repeat) return true;
-    if (KEYS.some(k => k.left === e.code)) pick(-1);
-    else if (KEYS.some(k => k.right === e.code)) pick(1);
+    if (e.code === 'ArrowLeft' || KEYS.some(k => k.left === e.code)) pick(-1);
+    else if (e.code === 'ArrowRight' || KEYS.some(k => k.right === e.code)) pick(1);
     else if (KEYS.some(k => k.attack === e.code)) post({ t: 'ready' });
     return true;
   }
