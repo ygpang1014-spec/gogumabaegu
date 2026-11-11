@@ -197,7 +197,7 @@ kbd {
     </article>
   </div>
   <div class="target">
-    <button id="roomMode" aria-pressed="true"></button>
+    <button id="roomMode" aria-pressed="true" hidden></button>
     <div class="target" id="roomTargets">
       <button data-score="7">7점</button>
       <button data-score="11">11점</button>
@@ -501,11 +501,6 @@ function seatLabel(s, i) {
   return ai ? `${name} ${food} (AI ${ai.level.name})` : `${name} ${food}`;
 }
 
-function clockText(frames) {
-  const sec = Math.floor(frames / 60);
-  return `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`;
-}
-
 function drawHud(s) {
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
@@ -519,14 +514,6 @@ function drawHud(s) {
     ctx.fillStyle = COLORS.text;
     const inDeuce = s.deuce && Math.min(...s.score) >= s.target - 1;
     ctx.fillText(inDeuce ? '듀스' : `${s.target}점 ${s.deuce ? '듀스' : '먼저'}`, W / 2, 100);
-  } else if (s.mode === 'coop') {
-    ctx.font = `60px ${DISPLAY}`;
-    ctx.fillStyle = COLORS.flesh;
-    ctx.fillText(clockText(s.clock), W / 2, 92);
-    const next = COOP_STAGES[s.stage];
-    ctx.font = `17px ${DISPLAY}`;
-    ctx.fillStyle = COLORS.text;
-    ctx.fillText(next ? `${s.stage + 1}단계 · 다음 ${clockText(next.at * 60)}` : `마지막 단계 · 목표 ${clockText(COOP_GOAL * 60)}`, W / 2, 128);
   } else {
     ctx.font = `20px ${DISPLAY}`;
     ctx.fillStyle = COLORS.text;
@@ -664,6 +651,17 @@ function drawTomatoBall(b, r, slowed, band) {
   drawLeaves(ctx, b.x, b.y - r * 0.8, r / 20);
 }
 
+function drawStar(x, y, r) {
+  ctx.beginPath();
+  for (let i = 0; i < 10; i++) {
+    const a = -Math.PI / 2 + i * Math.PI / 5, d = i % 2 ? r * 0.45 : r;
+    ctx.lineTo(x + Math.cos(a) * d, y + Math.sin(a) * d);
+  }
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+}
+
 function drawBullets(s) {
   for (const u of s.bullets || []) {
     if (u.strong) {
@@ -718,13 +716,26 @@ function drawPlayer(p) {
     ctx.beginPath(); ctx.arc(p.x, p.y - 38, 46, 0, Math.PI * 2); ctx.stroke();
     ctx.setLineDash([]);
   }
+  if (p.stun > 0) {
+    // 기절: 머리 위에 별이 빙글빙글 돌아요
+    const t = p.stun * 0.12;
+    ctx.fillStyle = '#ffe066';
+    ctx.strokeStyle = COLORS.night;
+    ctx.lineWidth = 1.5;
+    for (let i = 0; i < 3; i++) {
+      const a = t + i * Math.PI * 2 / 3;
+      drawStar(p.x + Math.cos(a) * 28, p.y - 100 + Math.sin(a) * 8, 9);
+    }
+  }
   if (p.spike > 0) {
     ctx.strokeStyle = COLORS.flesh;
     ctx.lineWidth = 3;
     ctx.beginPath(); ctx.arc(p.x, p.y - 38, 50, 0, Math.PI * 2); ctx.stroke();
   }
   const tossing = p.toss > 0;
-  drawFood(ctx, p.x, p.y, { char: c, facing: p.facing, look: tossing ? 'up' : p.look, scarf: COLORS.p[p.side], swinging: swinging || tossing, tilt: p.dive > 0 ? 1.2 : 0 });
+  if (p.stun > 0) ctx.globalAlpha = 0.75;
+  drawFood(ctx, p.x, p.y, { char: c, facing: p.facing, look: tossing ? 'up' : p.stun > 0 ? 'down' : p.look, scarf: COLORS.p[p.side], swinging: (swinging || tossing) && !(p.stun > 0), tilt: p.dive > 0 ? 1.2 : p.stun > 0 ? 0.25 : 0 });
+  ctx.globalAlpha = 1;
   if (c.charge && p.charge > 0) {
     // 수박 충전 막대: 눈금이 중, 끝이 강이에요
     const bx = p.x - 34, by = p.y - 104, bw = 68;
@@ -782,9 +793,9 @@ function drawIntro(s, fx) {
     ctx.lineWidth = 12;
     ctx.strokeStyle = COLORS.night;
     ctx.lineJoin = 'round';
-    ctx.strokeText(s.mode === 'coop' ? '&' : 'VS', 0, 0);
+    ctx.strokeText('VS', 0, 0);
     ctx.fillStyle = COLORS.flesh;
-    ctx.fillText(s.mode === 'coop' ? '&' : 'VS', 0, 0);
+    ctx.fillText('VS', 0, 0);
     ctx.restore();
     if (t < 34 && !calm) {
       ctx.fillStyle = `rgba(255, 255, 255, ${0.7 * (34 - t) / 8})`;
@@ -849,38 +860,11 @@ function drawVictory(s, fx) {
   ctx.globalAlpha = 1;
 }
 
-// 공지키기 끝 장면: 둘이 함께 버틴 시간을 보여줘요.
-function drawCoopEnd(s, fx) {
-  const t = fx.age;
-  ctx.fillStyle = COLORS.night;
-  ctx.fillRect(0, 0, W, H);
-  ctx.fillStyle = COLORS.ember;
-  ctx.fillRect(0, 486, W, H - 486);
-  const hop = calm || !s.cleared ? 0 : Math.abs(Math.sin(t * 0.09)) * 30;
-  const look = s.cleared ? 'up' : 'side';
-  drawBig(s.players[0], 250, 486 - hop, 3.2, 0, { facing: 1, look });
-  drawBig(s.players[1], 710, 486 - hop, 3.2, 1, { facing: -1, look });
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.globalAlpha = calm ? 1 : Math.min(1, t / 24);
-  ctx.font = `46px ${DISPLAY}`;
-  ctx.fillStyle = COLORS.text;
-  ctx.fillText(s.cleared ? '모든 단계를 깼어요!' : '공을 놓쳤어요', W / 2, 62);
-  ctx.font = `96px ${DISPLAY}`;
-  ctx.fillStyle = COLORS.flesh;
-  ctx.fillText(clockText(s.clock), W / 2, 158);
-  ctx.font = `24px ${DISPLAY}`;
-  ctx.fillStyle = COLORS.text;
-  ctx.fillText(`${Math.min(s.stage + 1, COOP_STAGES.length)}단계까지 · 최고 기록 ${clockText(fx.best)}${fx.isBest ? ' (새 기록)' : ''}`, W / 2, 232);
-  ctx.globalAlpha = 1;
-}
-
 function render(s, fx) {
   const scale = court.width / W;
   ctx.setTransform(scale, 0, 0, scale, 0, 0);
   if (fx.shake > 0) ctx.translate((Math.random() - 0.5) * fx.shake, (Math.random() - 0.5) * fx.shake);
   if (s.phase === 'intro') { drawIntro(s, fx); return; }
-  if (s.phase === 'over' && s.mode === 'coop') { drawCoopEnd(s, fx); return; }
   if (s.phase === 'over' && fx.winner !== null) { drawVictory(s, fx); return; }
   drawBackdrop(s);
   drawHud(s);
@@ -932,7 +916,6 @@ function playEvents(s, fx) {
       if (!calm) fx.shake = 12;
     }
     if (e.type === 'over') showOver(e.winner);
-    if (e.type === 'stage') beep(740, 0.2, 'triangle');
     if (e.type === 'pop') {
       // 뽕! 하고 터져요
       beep(880, 0.08, 'sine');
@@ -943,7 +926,6 @@ function playEvents(s, fx) {
       beep(e.strong ? 200 : 360, 0.15, 'sawtooth');
       fx.rings.push({ x: e.x, y: e.y, life: 20, color: e.strong ? COLORS.ember : '#a9dcff' });
     }
-    if (e.type === 'coopEnd') showCoopEnd(s);
   }
   s.events.length = 0;
 }
@@ -1187,19 +1169,6 @@ function openLobby() {
   $('home').hidden = true;
   $('lobby').hidden = false;
   renderLobby();
-}
-
-function loadBest() {
-  try { return Number(localStorage.getItem('coopBest')) || 0; } catch (e) { return 0; }
-}
-
-function showCoopEnd(s) {
-  const best = loadBest();
-  fx.isBest = s.clock > best;
-  fx.best = Math.max(best, s.clock);
-  fx.age = 0;
-  try { localStorage.setItem('coopBest', fx.best); } catch (e) { /* 이번 판에만 보여요 */ }
-  beep(s.cleared ? 660 : 200, 0.4, 'triangle');
 }
 
 function buildTuner() {

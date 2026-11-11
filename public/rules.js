@@ -80,7 +80,7 @@ const CHARACTERS = [
     bareFace: true, // 얼굴 판 없이 몸에 바로 눈을 그려요
     gauge: { side: 0.25 }, // 배추(0.34)보다 조금 느리게 차요
     special: 'tomato',
-    toss: { frames: 24, height: 150, speed: 15 }, // 스파이크: 띄우고 24프레임 뒤에 쳐요
+    toss: { frames: 24, lift: 88, rise: 45, speed: 15 }, // 스파이크: 머리 위로 살짝 띄우고 24프레임 뒤에 쳐요
     ability: ['필살기: 토마토공을 만들어 바로 쳐요. 위를 누르면 위로, 아래를 누르면 스파이크.', '스파이크는 공을 띄우고 잠깐 뒤에 쳐요. 그 사이 상대가 맞히면 토마토공이 터져요.', '상대가 토마토공을 쳐서 받으면 터져요. 못 받고 상대 코트에 떨어지면 내 득점.', '게이지는 좌우 공격으로 차요.'],
   },
   {
@@ -88,41 +88,24 @@ const CHARACTERS = [
     colors: { skin: '#f7d34a', edge: '#b88d14', face: '#fff3c0' },
     jump: 14.5, jumpCut: 5, // 점프 키를 일찍 떼면 낮게 떠요
     gun: {
-      max: 4, reload: 54, gap: 10,   // 탄창 4칸, 0.9초마다 1칸, 연사 간격
-      speed: 13, r: 7, upAngle: 35, downAngle: 30,
+      max: 3, reload: 90, gap: 10,   // 탄창 3칸, 1.5초마다 1칸, 연사 간격
+      speed: 13, r: 10, pad: 8, upAngle: 35, downAngle: 30, // pad: 보이는 것보다 넓은 판정
       slowFrames: 90, slowMove: 0.55, // 맞은 상대는 1.5초 동안 느려져요
-      ultCost: 3, ultPower: 1.4, ultSpeed: 16, ultR: 12,
+      ultCost: 3, ultPower: 1.4, ultSpeed: 16, ultR: 16,
+      stunFrames: 120,               // 센 총알에 맞은 상대는 2초 동안 기절
     },
-    ability: ['공격 키로 보는 쪽에 옥수수 총알을 쏴요. 공에 맞으면 공격처럼 쳐져요.', '위를 보면 조금 위로, 점프 중 아래를 보면 조금 아래로 쏴요. 네트에 닿으면 사라져요.', '탄창 4칸은 저절로 차요. 총알에 맞은 상대는 잠깐 느려져요.', '점프가 높고, 오래 누를수록 높이 떠요.', '필살기: 총알 3개로 센 총알. 공은 세게 쳐지고, 상대가 맞으면 그 판은 내 득점.'],
+    ability: ['공격 키로 보는 쪽에 옥수수 총알을 쏴요. 공에 맞으면 공격처럼 쳐져요.', '위를 보면 조금 위로, 점프 중 아래를 보면 조금 아래로 쏴요. 네트에 닿으면 사라져요.', '탄창 3칸은 저절로 차요. 총알에 맞은 상대는 잠깐 느려져요.', '점프가 높고, 오래 누를수록 높이 떠요.', '필살기: 총알 3개로 센 총알. 공은 세게 쳐지고, 상대가 맞으면 2초 동안 기절해요.'],
   },
 ];
 
 // ── 모드 ──
 const MODES = [
   { id: 'versus', name: '대결 모드', note: '듀스를 켜면 목표 점수 1점 전에 동점이 된 뒤로 2점을 앞서야 이겨요.' },
-  { id: 'coop', name: '공지키기', note: '둘이 힘을 합쳐 공을 떨어뜨리지 않고 버텨요. 정해진 시간마다 방해가 더해져요.' },
   { id: 'free', name: '자유 모드', note: '점수도 끝도 없어요. 경기 중 Tab을 누르면 시간이 멈추고 공과 네트, 바람을 마음대로 바꿀 수 있어요. 득점하면 멈추고, 공격 키를 눌러야 다시 시작해요.' },
 ];
 
 const BASE_ENV = { speed: 1, gravity: BALL.gravity, wind: 0, gust: 0, netGoal: NET.top, ballR: BALL.r, count: 1 };
 
-// 공지키기 방해 단계: 순서와 시간이 항상 같아요. at은 버틴 초입니다.
-const COOP_STAGES = [
-  { at: 15, text: '공이 빨라져요', set: { speed: 1.2 } },
-  { at: 30, text: '바람이 불어요 →', set: { wind: 0.03 } },
-  { at: 45, text: '네트가 올라가요', set: { netGoal: 320 } },
-  { at: 60, text: '공이 하나 늘어요', set: { count: 2 } },
-  { at: 80, text: '바람 방향이 바뀌어요 ←', set: { wind: -0.05 } },
-  { at: 100, text: '공이 더 빨라져요', set: { speed: 1.4 } },
-  { at: 120, text: '네트가 더 올라가요', set: { netGoal: 270 } },
-  { at: 140, text: '공이 작아져요', set: { ballR: 14 } },
-  { at: 160, text: '돌풍이 불어요', set: { wind: 0, gust: 0.07 } },
-  { at: 180, text: '공이 하나 더 늘어요', set: { count: 3 } },
-  { at: 210, text: '공이 아주 빨라져요', set: { speed: 1.6 } },
-  { at: 240, text: '네트가 끝까지 올라가요', set: { netGoal: 230 } },
-  { at: 270, text: '돌풍이 거세져요', set: { gust: 0.1 } },
-];
-const COOP_GOAL = 300;
 
 // 자유 모드 설정 항목
 const TUNERS = [
@@ -165,11 +148,12 @@ function makePlayer(side, char, prev) {
     reload: 0,
     fireCd: 0,
     slowed: 0,    // 옥수수 총알에 맞아 느려진 남은 프레임
+    stun: 0,      // 옥수수 센 총알에 맞아 기절한 남은 프레임
   };
 }
 
 function makeMatch(chars, target, levels = [null, null], deuce = false, mode = 'versus', settings = null) {
-  const s = { chars, target, deuce, score: [0, 0], server: 0, events: [], players: [null, null], bullets: [], touch: 0, rally: 0, ai: levels.map(makeAi), mode, clock: 0, stage: 0, cleared: false, notice: null };
+  const s = { chars, target, deuce, score: [0, 0], server: 0, events: [], players: [null, null], bullets: [], touch: 0, rally: 0, ai: levels.map(makeAi), mode, clock: 0, notice: null };
   s.env = { ...BASE_ENV, ...settings, windNow: 0, netTop: NET.top };
   s.env.netTop = s.env.netGoal;
   resetRound(s);
@@ -392,7 +376,6 @@ function updateSpecial(s, p, input) {
     return;
   }
   if (!c.special || !input.specialPressed || p.gauge < 1 || p.rage > 0 || s.phase !== 'play') return;
-  if (c.special === 'tomato' && s.mode === 'coop') return; // 공지키기에서는 토마토공을 못 만들어요
   s.events.push({ type: 'special', side: p.side });
   if (c.special === 'rage') {
     p.rage = c.rageFrames;
@@ -410,7 +393,7 @@ function updateSpecial(s, p, input) {
     p.swing = null;
     if (p.look === 'down') {
       // 스파이크: 머리 위로 띄우고 잠깐 뒤에 쳐요.
-      const b = makeTomato(p, p.x + p.facing * 12, p.y - c.toss.height);
+      const b = makeTomato(p, p.x, p.y - c.toss.lift);
       b.held = true;
       s.balls.push(b);
       p.toss = c.toss.frames;
@@ -427,8 +410,14 @@ function updateSpecial(s, p, input) {
 }
 
 function updateToss(s, p) {
-  if (--p.toss > 0 || !p.tossBall) return;
-  const b = p.tossBall;
+  const b = p.tossBall, t = p.char.toss;
+  if (b && s.balls.includes(b)) {
+    // 머리에서 살짝 떠올랐다가 내려올 때 쳐요.
+    const k = 1 - (p.toss - 1) / t.frames;
+    b.x = p.x;
+    b.y = p.y - t.lift - t.rise * Math.sin(k * Math.PI * 0.75);
+  }
+  if (--p.toss > 0 || !b) return;
   p.tossBall = null;
   if (s.phase === 'play' && b.held && s.balls.includes(b)) {
     sendBall(s, p, b, 'spike', 1, 1);
@@ -476,18 +465,32 @@ function updateBullets(s) {
     u.x += u.vx;
     u.y += u.vy;
     let gone = u.x < -20 || u.x > W + 20 || u.y < -20 || u.y > GROUND || bulletBlocked(u, s.env);
-    const b = !gone && s.balls.find(x => Math.hypot(x.x - u.x, x.y - u.y) < s.env.ballR + u.r);
+    const b = !gone && s.balls.find(x => Math.hypot(x.x - u.x, x.y - u.y) < s.env.ballR + u.r + g.pad);
     if (b) {
       sendBall(s, owner, b, u.dir, u.strong ? g.ultPower : 1, 1, u.facing);
       gone = true;
-    } else if (!gone && s.mode !== 'coop' && Math.hypot(foe.x - u.x, foe.y - 38 - u.y) < 30 + u.r) {
+    } else if (!gone && Math.hypot(foe.x - u.x, foe.y - 38 - u.y) < 30 + u.r + g.pad) {
       gone = true;
       s.events.push({ type: 'zap', x: u.x, y: u.y, strong: u.strong });
-      if (u.strong) { scorePoint(s, u.side, foe.x); return; }
-      foe.slowed = g.slowFrames;
+      if (u.strong) stunPlayer(s, foe, g.stunFrames);
+      else foe.slowed = g.slowFrames;
     }
     if (gone) s.bullets.splice(s.bullets.indexOf(u), 1);
   }
+}
+
+// 기절: 하던 동작을 멈추고 잠깐 못 움직이고 못 쳐요.
+function stunPlayer(s, p, frames) {
+  p.stun = frames;
+  p.swing = null;
+  p.charge = 0;
+  p.slowing = false;
+  p.dash = 0;
+  p.dive = 0;
+  p.lock = 0;
+  p.spike = 0;
+  p.toss = 0;
+  if (p.tossBall) { removeBall(s, p.tossBall); p.tossBall = null; }
 }
 
 function updateDash(s, p) {
@@ -508,10 +511,12 @@ function updateDash(s, p) {
 function updatePlayer(s, p, input) {
   const c = p.char;
   const dir = (input.right ? 1 : 0) - (input.left ? 1 : 0);
-  const frozen = p.dash > 0 || p.dive > 0 || p.lock > 0 || p.toss > 0;
+  const stunned = p.stun > 0;
+  const frozen = stunned || p.dash > 0 || p.dive > 0 || p.lock > 0 || p.toss > 0;
   if (p.slowed > 0) p.slowed--;
   if (!frozen && dir !== 0) p.facing = dir;
-  if (p.dash > 0) updateDash(s, p);
+  if (stunned) p.stun--;
+  else if (p.dash > 0) updateDash(s, p);
   else if (p.dive > 0) {
     p.x += p.facing * c.dive.speed;
     if (--p.dive === 0) p.lock = c.dive.recover;
@@ -525,7 +530,7 @@ function updatePlayer(s, p, input) {
   p.look = input.up ? 'up' : input.down ? 'down' : 'side';
 
   if (input.jump && p.onGround && !frozen) { p.vy = -c.jump; p.onGround = false; }
-  if (c.jumpCut && !input.jump && p.vy < -c.jumpCut) p.vy = -c.jumpCut; // 일찍 떼면 낮게
+  if (c.jumpCut && (!input.jump || stunned) && p.vy < -c.jumpCut) p.vy = -c.jumpCut; // 일찍 떼면 낮게
   if (!p.onGround && p.dash === 0) {
     p.vy += c.gravity;
     p.y += p.vy;
@@ -533,6 +538,10 @@ function updatePlayer(s, p, input) {
   }
 
   if (p.cooldown > 0) p.cooldown--;
+  if (stunned) {
+    if (c.gun && p.ammo < c.gun.max) p.reload = Math.min(p.reload + 1, c.gun.reload - 1); // 기절 중에도 장전은 돼요
+    return;
+  }
   updateSpecial(s, p, input);
   if (c.gun) updateGun(s, p, input);
   else if (c.contact) updateContact(s, p, input);
@@ -590,10 +599,7 @@ function ballLanded(s, b) {
 
 function scorePoint(s, scorer, x) {
   s.events.push({ type: 'point', scorer, x });
-  if (s.mode === 'coop') {
-    s.phase = 'over';
-    s.events.push({ type: 'coopEnd' });
-  } else if (s.mode === 'free') {
+  if (s.mode === 'free') {
     // 득점하면 멈추고, 공격 키를 눌러야 다시 시작해요.
     s.server = scorer;
     s.notice = { text: `${scorer + 1}P 득점`, side: scorer, timer: 60 };
@@ -632,21 +638,7 @@ function updateEnv(s) {
   env.netTop += clamp(env.netGoal - env.netTop, -1, 1);
   env.windNow = env.wind + Math.sin(s.clock * 0.03) * env.gust;
   if (s.notice && --s.notice.timer <= 0) s.notice = null;
-  if (s.mode !== 'coop' || s.phase !== 'play') return;
-  s.clock++;
-  const next = COOP_STAGES[s.stage];
-  if (next && s.clock >= next.at * 60) {
-    Object.assign(env, next.set);
-    syncBalls(s);
-    s.stage++;
-    s.notice = { text: next.text, side: -1, timer: 150 };
-    s.events.push({ type: 'stage' });
-  }
-  if (s.clock >= COOP_GOAL * 60) {
-    s.cleared = true;
-    s.phase = 'over';
-    s.events.push({ type: 'coopEnd' });
-  }
+  if (s.phase === 'play') s.clock++; // 돌풍이 시간에 따라 바뀌어요
 }
 
 // 듀스를 켜면 목표 점수를 넘어도 2점을 앞서야 이겨요.
@@ -722,13 +714,11 @@ function currentPower(p) {
 function scoreShot(s, p, b, dir) {
   const shot = p.char.shots[dir], power = currentPower(p);
   const end = predict({ x: b.x, y: b.y, vx: shot.vx * power * p.facing, vy: shot.vy * power }, s.env.speed, s.env);
-  if (s.mode === 'coop') return dir === 'down' ? -100 : 50 + end.t;
   if (onMySide(p, end.x)) return dir === 'up' ? 20 : -100;
   return 100 + Math.abs(end.x - s.players[1 - p.side].x) * 0.1 + (dir === 'down' ? 30 : 0) - end.t * 0.1;
 }
 
 function bestShot(s, p, b) {
-  if (s.mode === 'coop' && b.y < GROUND - 170) return null; // 협동은 낮게 내려왔을 때 받아요
   const r = s.env.ballR;
   const dirs = p.onGround ? ['side', 'up'] : ['side', 'up', 'down'];
   let best = null, bestScore = -Infinity;
@@ -787,10 +777,9 @@ function gunScore(s, p, b, dir, strong) {
     // 게임과 같은 순서: 총알이 먼저 움직여 공에 닿는지 보고, 그다음 공이 움직여요.
     u.x += u.vx; u.y += u.vy;
     if (u.x < -20 || u.x > W + 20 || u.y < -20 || u.y > GROUND || bulletBlocked(u, s.env)) return -Infinity;
-    if (Math.hypot(ball.x - u.x, ball.y - u.y) < r + u.r) {
+    if (Math.hypot(ball.x - u.x, ball.y - u.y) < r + u.r + g.pad) {
       const shot = p.char.shots[dir], power = strong ? g.ultPower : 1;
       const end = predict({ x: ball.x, y: ball.y, vx: shot.vx * power * u.facing, vy: shot.vy * power }, s.env.speed, s.env);
-      if (s.mode === 'coop') return dir === 'down' ? -100 : 50 + end.t;
       return onMySide(p, end.x) ? (dir === 'up' ? 20 : -100) : 100 - end.t * 0.1;
     }
     if (!b.held) advanceBall(ball, time, s.env);
@@ -815,18 +804,20 @@ function aiGun(s, p, input, ai) {
   }
 }
 
+function foe0(s, p) { return s.players[1 - p.side]; }
+
 function aiSpecial(s, p, input, ai, toward, pressed) {
   const c = p.char, b = ai.ball || s.balls[0];
   if (c.gun) {
     // 센 총알이 상대에게 맞을 것 같으면 쏴요.
-    if (s.phase !== 'play' || p.ammo < c.gun.ultCost || p.fireCd > 0 || s.mode === 'coop' || Math.random() >= ai.level.special * 0.3) return;
+    if (s.phase !== 'play' || p.ammo < c.gun.ultCost || p.fireCd > 0 || foe0(s, p).stun > 0 || Math.random() >= ai.level.special * 0.3) return;
     const foe = s.players[1 - p.side];
     for (const dir of p.onGround ? ['side', 'up'] : ['side', 'up', 'down']) {
       const u = bulletAim(p, dir, true);
       for (let t = 0; t < 60; t++) {
         u.x += u.vx; u.y += u.vy;
         if (bulletBlocked(u, s.env) || u.y > GROUND) break;
-        if (Math.hypot(foe.x - u.x, foe.y - 38 - u.y) < 30 + u.r) {
+        if (Math.hypot(foe.x - u.x, foe.y - 38 - u.y) < 30 + u.r + c.gun.pad) {
           input.specialPressed = true;
           input.attack = false;
           input.up = dir === 'up';
@@ -847,7 +838,7 @@ function aiSpecial(s, p, input, ai, toward, pressed) {
   if (c.special === 'rage') use = mine;
   else if (c.special === 'slowTime') use = pressed;
   else if (c.special === 'tomato') {
-    use = s.mode !== 'coop';
+    use = true;
     input.up = false;
     input.down = use && Math.random() < 0.5;
   }
@@ -890,7 +881,7 @@ function aiInput(s, i) {
   const urgent = !!mine && Math.abs(gap) / c.move > ai.plan.t;
   const pressed = !!mine && Math.abs(gap) / c.move > ai.plan.t * 0.6;
 
-  if (L.jump && s.mode !== 'coop' && mine && p.onGround && Math.abs(p.x - NET.x) < 190) {
+  if (L.jump && mine && p.onGround && Math.abs(p.x - NET.x) < 190) {
     for (let t = 16; t < 28 && t < ai.plan.path.length; t++) {
       const spot = ai.plan.path[t];
       if (spot.y < 330 && spot.y > 230 && Math.abs(spot.x - p.x) < 50) { input.jump = true; break; }

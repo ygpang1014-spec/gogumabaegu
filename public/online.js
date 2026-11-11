@@ -3,7 +3,7 @@
 const Online = (() => {
   const BITS = { left: 1, right: 2, up: 4, down: 8, jump: 16, attack: 32, special: 64 };
   const SECTIONS = ['home', 'lobby', 'online', 'room', 'game'];
-  const ONLINE_MODES = [{ id: 'versus', name: '대결 모드' }, { id: 'coop', name: '공지키기' }];
+  const ONLINE_MODES = [{ id: 'versus', name: '대결 모드' }];
   const STEP = 1000 / 60;
   let ws = null, room = null, pendingOpen = null;
   let lastMask = 0, seq = 0, tapAttack = false, tapSpecial = false;
@@ -132,8 +132,6 @@ const Online = (() => {
     s.score = m.score;
     s.server = m.server;
     s.clock = m.clock;
-    s.stage = m.stage;
-    s.cleared = m.cleared;
     s.notice = m.notice;
     Object.assign(s.env, m.env);
     s.phase = m.phase;
