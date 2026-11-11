@@ -200,6 +200,7 @@ const Online = (() => {
     ctx.globalAlpha = 1;
   }
 
+  const lastShown = [];
   function renderRoom() {
     $('roomCode').textContent = room.code;
     $('roomAddress').textContent = location.host;
@@ -220,11 +221,14 @@ const Online = (() => {
         c.fillStyle = COLORS.p[i];
         c.fillText('?', 48, 60);
       } else if (char) drawFood(c, 48, 106, { char, facing: i === 0 ? 1 : -1, look: 'side', scarf: COLORS.p[i], swinging: false });
-      $('roomAbility' + i).replaceChildren(...(char ? char.ability : []).map(line => {
-        const li = document.createElement('li');
-        li.textContent = line;
-        return li;
-      }));
+      const shown = seat ? seat.pick : -1;
+      if (lastShown[i] !== undefined && lastShown[i] !== shown) glitch($('roomScreen' + i));
+      lastShown[i] = shown;
+      if (char) renderCard({ type: $('roomType' + i), meters: $('roomMeters' + i), card: $('roomAbility' + i) }, char);
+      else { $('roomType' + i).textContent = ''; $('roomMeters' + i).replaceChildren(); $('roomAbility' + i).replaceChildren(); }
+      const coin = $('roomCoin' + i);
+      coin.textContent = !seat ? 'WAITING...' : seat.ready ? 'READY!' : 'INSERT COIN';
+      coin.classList.toggle('on', !!(seat && seat.ready));
       document.querySelectorAll(`.roomPick[data-seat="${i}"], .roomAll[data-seat="${i}"]`).forEach(b => { b.hidden = !mine; });
       if (!mine) showGrid($('roomGrid' + i), false);
       if (seat) renderGrid($('roomGrid' + i), i, seat.pick, choose);
@@ -337,7 +341,7 @@ const Online = (() => {
   return {
     open, frame, handleKey, drawPing,
     // 온라인에서는 내가 실제로 쓰는 키를 알려주고, 상대 게이지에는 키를 적지 않아요.
-    specialLabel: side => side !== (room ? room.seat : 0) ? '가득' : KEYS[keySet].special === 'KeyQ' ? 'Q' : 'P',
+    specialLabel: side => side !== (room ? room.seat : 0) ? '가득' : keyLabel(KEYS[keySet].special),
     rematch() { $('over').hidden = true; post({ t: 'again' }); },
     leave() { post({ t: 'leave' }); },
   };
