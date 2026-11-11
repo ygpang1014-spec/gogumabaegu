@@ -221,6 +221,7 @@ const Online = (() => {
         c.fillStyle = COLORS.p[i];
         c.fillText('?', 48, 60);
       } else if (char) drawFood(c, 48, 106, { char, facing: i === 0 ? 1 : -1, look: 'side', scarf: COLORS.p[i], swinging: false });
+      setStage($('roomStage' + i), char, i);
       const shown = seat ? seat.pick : -1;
       if (lastShown[i] !== undefined && lastShown[i] !== shown) glitch($('roomScreen' + i));
       lastShown[i] = shown;

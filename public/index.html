@@ -145,6 +145,13 @@ body:has(> #lobby:not([hidden])), body:has(> #room:not([hidden])) {
 .arcade .tip button { font: inherit; color: var(--a-amber); background: none; border: 0; padding: 0; text-decoration: underline; }
 
 /* 게임기 두 대 */
+/* 게임기 옆 무대: 넓은 화면에서만 보여요 */
+.cabinets { position: relative; }
+.stage { position: absolute; bottom: 40px; width: clamp(150px, calc((100vw - 1100px) / 2 + 20px), 250px); height: auto; aspect-ratio: 120 / 170; pointer-events: none; display: none;
+  filter: drop-shadow(0 0 18px color-mix(in srgb, var(--a-p1) 30%, transparent)); }
+.stage.p1 { right: calc(96% + 6px); }
+.stage.p2 { left: calc(96% + 6px); filter: drop-shadow(0 0 18px color-mix(in srgb, var(--a-p2) 30%, transparent)); }
+@media (min-width: 1340px) { .stage { display: block; } }
 .cabinets { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: clamp(40px, 8vw, 120px); perspective: 1600px; perspective-origin: 50% 45%; padding: 6px 4% 40px; }
 .cab {
   --seat: var(--a-p1); position: relative; transform-style: preserve-3d; display: grid; align-content: start; min-width: 0;
@@ -420,6 +427,7 @@ body:has(> #lobby:not([hidden])), body:has(> #room:not([hidden])) {
   </div>
   <p id="roomStatus" role="status"></p>
   <div class="seats cabinets">
+    <canvas class="stage p1" id="roomStage0" width="288" height="408" aria-hidden="true"></canvas><canvas class="stage p2" id="roomStage1" width="288" height="408" aria-hidden="true"></canvas>
     <article class="seat cab p1">
       <div class="cabSide" aria-hidden="true"></div>
       <div class="marquee"><span class="tag">PLAYER 1</span><h2 id="roomName0"></h2></div>
@@ -484,6 +492,7 @@ body:has(> #lobby:not([hidden])), body:has(> #room:not([hidden])) {
   </div>
   <p class="note" id="modeNote"></p>
   <div class="seats cabinets">
+    <canvas class="stage p1" id="stage0" width="288" height="408" aria-hidden="true"></canvas><canvas class="stage p2" id="stage1" width="288" height="408" aria-hidden="true"></canvas>
     <article class="seat cab p1">
       <div class="cabSide" aria-hidden="true"></div>
       <div class="marquee"><span class="tag">PLAYER 1</span><h2><button class="seatName" id="seatName0" data-seat="0">1P</button><input class="nameEdit" id="nameEdit0" maxlength="8" aria-label="1P 이름" hidden></h2></div>
@@ -1758,6 +1767,7 @@ function renderLobby() {
       c.fillStyle = COLORS.p[i];
       c.fillText('?', 48, 60);
     } else drawFood(c, 48, 106, { char, facing: i === 0 ? 1 : -1, look: 'side', scarf: COLORS.p[i], swinging: false });
+    setStage($('stage' + i), char, i);
     renderGrid($('grid' + i), i, lobby.picks[i], slot => setCharacter(i, slot));
     renderCard({ type: $('type' + i), meters: $('meters' + i), card: $('ability' + i) }, char);
   });
@@ -1804,6 +1814,155 @@ function glitch(screen) {
   clearTimeout(screen.glitchTimer);
   screen.glitchTimer = setTimeout(() => screen.classList.remove('glitching'), 320);
 }
+
+// 게임기 옆 무대: 고른 캐릭터가 게임기 옆에 서서 자기 특기대로 움직여요.
+// 바꾸면 아주 잠깐 지지직해요.
+const STAGE_W = 120, STAGE_H = 170, STAGE_GROUND = 160, STAGE_GLITCH = 180;
+const stageOff = document.createElement('canvas');
+
+function setStage(cv, char, i) {
+  if (!cv) return;
+  if (cv.char !== char) {
+    if (cv.char !== undefined) cv.glitchAt = performance.now();
+    cv.char = char;
+  }
+  cv.seat = i;
+}
+
+// 캐릭터 하나 그리기. dx 옆으로, dy 위로, sq 찌그러짐, tilt 기울기
+function stagePose(c, char, i, o = {}) {
+  const facing = i === 0 ? 1 : -1;
+  const x = STAGE_W / 2 + (o.dx || 0) * facing, lift = o.dy || 0, sq = o.sq || 1;
+  if (!o.ghost) {
+    c.fillStyle = 'rgba(0, 0, 0, .35)';
+    c.beginPath(); c.ellipse(x, STAGE_GROUND + 2, 26 * (1 - Math.min(lift, 60) / 120), 4.5, 0, 0, Math.PI * 2); c.fill();
+  }
+  c.save();
+  if (o.alpha !== undefined) c.globalAlpha = o.alpha;
+  c.translate(x, STAGE_GROUND - lift);
+  c.scale(1 + (1 - sq) * 0.6, sq);
+  drawFood(c, 0, 0, { char, facing, look: o.look || 'side', scarf: COLORS.p[i], swinging: !!o.swing, tilt: o.tilt || 0 });
+  c.restore();
+}
+
+const STAGE_MOVES = {
+  // 고구마: 통통 뛰다가 가끔 공을 쳐요
+  goguma(c, t, ch, i) {
+    const p = t % 2.4 / 2.4, hit = p > 0.72 && p < 0.84;
+    stagePose(c, ch, i, { dy: hit ? 0 : Math.abs(Math.sin(t * 4)) * 7, look: hit || p > 0.62 && p < 0.9 ? 'up' : 'side', swing: hit });
+  },
+  // 치즈: 느릿느릿 흔들리고, 느려지는 물결이 퍼져요
+  cheese(c, t, ch, i) {
+    for (let k = 0; k < 3; k++) {
+      const r = (t * 0.35 + k / 3) % 1;
+      c.strokeStyle = `rgba(253, 232, 138, ${0.45 * (1 - r)})`;
+      c.lineWidth = 2;
+      c.beginPath(); c.ellipse(STAGE_W / 2, STAGE_GROUND - 40, 20 + r * 40, 14 + r * 30, 0, 0, Math.PI * 2); c.stroke();
+    }
+    stagePose(c, ch, i, { tilt: Math.sin(t * 1.2) * 0.08, dy: (Math.sin(t * 1.2) + 1) * 1.5 });
+  },
+  // 수박: 꾹 모았다가 강타
+  watermelon(c, t, ch, i) {
+    const p = t % 2.6 / 2.6;
+    const charge = p < 0.6 ? p / 0.6 : 0, hit = p >= 0.6 && p < 0.72;
+    if (charge > 0 || hit) {
+      c.fillStyle = hit ? 'rgba(255, 220, 120, .55)' : `rgba(240, 96, 106, ${0.15 + charge * 0.35})`;
+      c.beginPath(); c.arc(STAGE_W / 2, STAGE_GROUND - 40, 30 + charge * 16 + (hit ? 14 : 0), 0, Math.PI * 2); c.fill();
+    }
+    const shake = charge > 0.7 ? Math.sin(t * 90) * 1.5 : 0;
+    stagePose(c, ch, i, { sq: 1 - charge * 0.12, dx: shake + (hit ? 6 : 0), swing: hit, look: hit ? 'up' : 'side' });
+  },
+  // 배추: 넓게 휘둘러요 (위, 옆, 아래)
+  cabbage(c, t, ch, i) {
+    const p = t % 2.4 / 2.4, k = Math.floor(p * 3), q = p * 3 - k;
+    const look = ['up', 'side', 'down'][k], swing = q < 0.3;
+    if (swing) {
+      c.fillStyle = `rgba(143, 206, 92, ${0.35 * (1 - q / 0.3)})`;
+      c.beginPath(); c.ellipse(STAGE_W / 2 + (i === 0 ? 14 : -14), STAGE_GROUND - 45, 44, 34, 0, 0, Math.PI * 2); c.fill();
+    }
+    stagePose(c, ch, i, { look, swing, dy: swing ? 0 : Math.abs(Math.sin(t * 3)) * 3 });
+  },
+  // 코코넛: 뛰었다가 앞으로 다이브
+  coconut(c, t, ch, i) {
+    const p = t % 3 / 3;
+    if (p < 0.3) stagePose(c, ch, i, { dy: Math.abs(Math.sin(t * 3)) * 3 });
+    else if (p < 0.5) { const q = (p - 0.3) / 0.2; stagePose(c, ch, i, { dy: Math.sin(q * Math.PI) * 34, look: 'up' }); }
+    else if (p < 0.7) { const q = (p - 0.5) / 0.2; stagePose(c, ch, i, { dx: q * 18, tilt: Math.sin(q * Math.PI) * 1.1, swing: q > 0.3, look: 'down' }); }
+    else { const q = (p - 0.7) / 0.3; stagePose(c, ch, i, { dx: 18 * (1 - q) }); }
+  },
+  // 블루베리: 빠르게 왔다갔다, 잔상
+  blueberry(c, t, ch, i) {
+    const dx = s => Math.tanh(Math.sin(s * 2.6) * 4) * 16;
+    stagePose(c, ch, i, { dx: dx(t - 0.09), alpha: 0.18, ghost: true });
+    stagePose(c, ch, i, { dx: dx(t - 0.045), alpha: 0.35, ghost: true });
+    stagePose(c, ch, i, { dx: dx(t), dy: Math.abs(Math.sin(t * 8)) * 2 });
+  },
+  // 토마토: 머리 위로 토마토공을 띄워요
+  tomato(c, t, ch, i) {
+    const b = Math.abs(Math.sin(t * 2.4));
+    stagePose(c, ch, i, { look: 'up', dy: (1 - b) * 2, swing: b < 0.15 });
+    const bx = STAGE_W / 2 + (i === 0 ? 10 : -10), by = STAGE_GROUND - 92 - b * 24;
+    c.fillStyle = '#ef4a36'; c.strokeStyle = '#a8281b'; c.lineWidth = 1.5;
+    c.beginPath(); c.arc(bx, by, 9, 0, Math.PI * 2); c.fill(); c.stroke();
+    c.fillStyle = '#3f9b3a';
+    c.beginPath(); c.ellipse(bx, by - 8, 5, 2.5, 0, 0, Math.PI * 2); c.fill();
+  },
+  // 옥수수: 높이 뛰어서 총알 발사
+  corn(c, t, ch, i) {
+    const p = t % 2.8 / 2.8;
+    let dy = Math.abs(Math.sin(t * 3)) * 2;
+    if (p >= 0.4 && p < 0.78) dy = Math.sin((p - 0.4) / 0.38 * Math.PI) * 42;
+    const fire = p >= 0.57;
+    stagePose(c, ch, i, { dy, swing: p >= 0.57 && p < 0.63 });
+    if (fire) {
+      const f = i === 0 ? 1 : -1, d = (p - 0.57) * 260;
+      const bx = STAGE_W / 2 + f * (34 + d), by = STAGE_GROUND - 36 - 42 * Math.sin(0.17 / 0.38 * Math.PI);
+      c.fillStyle = '#ffe066'; c.strokeStyle = '#b88d14'; c.lineWidth = 1.5;
+      c.beginPath(); c.ellipse(bx, by, 6, 4.5, 0, 0, Math.PI * 2); c.fill(); c.stroke();
+    }
+  },
+};
+
+function drawStage(cv, now) {
+  if (!cv.clientWidth) return; // 화면이 좁아서 숨겨졌어요
+  const W2 = cv.width, H2 = cv.height;
+  stageOff.width = W2; stageOff.height = H2;
+  const c = stageOff.getContext('2d');
+  c.setTransform(W2 / STAGE_W, 0, 0, W2 / STAGE_W, 0, 0);
+  const char = cv.char, i = cv.seat || 0, t = calm ? 0 : now / 1000 + i * 0.7;
+  if (char === RANDOM_PICK) {
+    c.font = `110px ${DISPLAY}`;
+    c.textAlign = 'center'; c.textBaseline = 'alphabetic';
+    c.fillStyle = COLORS.p[i];
+    c.fillText('?', STAGE_W / 2, STAGE_GROUND - 10 - Math.abs(Math.sin(t * 3)) * 8);
+  } else if (char) (STAGE_MOVES[char.id] || ((c2, t2, ch, k) => stagePose(c2, ch, k)))(c, t, char, i);
+  const g = cv.getContext('2d');
+  g.setTransform(1, 0, 0, 1, 0, 0);
+  g.clearRect(0, 0, W2, H2);
+  const age = now - (cv.glitchAt || -1e9);
+  if (age >= STAGE_GLITCH || calm) { g.drawImage(stageOff, 0, 0); return; }
+  // 지지직: 가로 띠가 어긋나고 색이 갈라져요
+  g.globalAlpha = 0.6;
+  g.drawImage(stageOff, -10, 0);
+  g.globalAlpha = 1;
+  for (let y = 0; y < H2;) {
+    const h = 6 + Math.random() * 40, off = (Math.random() - 0.5) * 50;
+    g.drawImage(stageOff, 0, y, W2, h, off, y, W2, h);
+    y += h;
+  }
+  g.globalCompositeOperation = 'source-atop';
+  for (let k = 0; k < 5; k++) {
+    g.fillStyle = k % 2 ? 'rgba(46, 242, 208, .55)' : 'rgba(255, 79, 139, .55)';
+    g.fillRect(0, Math.random() * H2, W2, 3 + Math.random() * 10);
+  }
+  g.globalCompositeOperation = 'source-over';
+}
+
+function stageLoop(now) {
+  document.querySelectorAll('.stage').forEach(cv => drawStage(cv, now));
+  requestAnimationFrame(stageLoop);
+}
+requestAnimationFrame(stageLoop);
 
 function renderKeys(box, i) {
   const k = KEYS[i];
