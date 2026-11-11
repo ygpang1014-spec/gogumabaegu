@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="ko">
+<html lang="ko" data-theme="retro">
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta charset="utf-8">
@@ -140,7 +140,7 @@ body:has(> #lobby:not([hidden])), body:has(> #room:not([hidden])) {
 .arcade .tip button { font: inherit; color: var(--a-amber); background: none; border: 0; padding: 0; text-decoration: underline; }
 
 /* 게임기 두 대 */
-.cabinets { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: clamp(24px, 6vw, 90px); perspective: 1700px; padding: 6px 3% 34px; }
+.cabinets { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: clamp(40px, 8vw, 120px); perspective: 1600px; perspective-origin: 50% 45%; padding: 6px 4% 40px; }
 .cab {
   --seat: var(--a-p1); position: relative; transform-style: preserve-3d; display: grid; align-content: start; min-width: 0;
   background: linear-gradient(180deg, var(--a-body2), var(--a-body) 55%, #0c0a11);
@@ -148,14 +148,16 @@ body:has(> #lobby:not([hidden])), body:has(> #room:not([hidden])) {
   box-shadow: inset 0 0 0 2px var(--a-edge), inset 0 2px 0 rgba(255, 255, 255, .06);
   transition: transform .4s;
 }
-.cab.p1 { transform: rotateY(-10deg); }
-.cab.p2 { --seat: var(--a-p2); transform: rotateY(10deg); }
+/* 1P는 오른쪽(안쪽) 모서리가, 2P는 왼쪽(안쪽) 모서리가 앞으로 나와요. */
+.cab.p1 { transform: rotateY(12deg); }
+.cab.p2 { --seat: var(--a-p2); transform: rotateY(-12deg); }
 .cab::after { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; border-inline: 3px solid var(--seat); opacity: .7; box-shadow: 0 0 22px -4px var(--seat); }
 .cab::before { content: ""; position: absolute; left: 4%; right: 4%; bottom: -30px; height: 34px; background: radial-gradient(closest-side, rgba(0, 0, 0, .8), transparent); pointer-events: none; }
-.cabSide { position: absolute; top: 0; bottom: 0; width: 64px; border-radius: 16px 16px 6px 6px; pointer-events: none;
-  background: linear-gradient(180deg, transparent 18%, var(--seat) 18% 19.5%, transparent 19.5% 74%, var(--seat) 74% 75.5%, transparent 75.5%), linear-gradient(90deg, #08070c, #1d1828); }
-.cab.p1 .cabSide { left: 0; transform-origin: left; transform: rotateY(-90deg); }
-.cab.p2 .cabSide { right: 0; transform-origin: right; transform: rotateY(90deg); }
+/* 옆면: 앞면 안쪽 모서리에 붙어서 뒤로 뻗어요. */
+.cabSide { position: absolute; top: 0; bottom: 0; width: 150px; border-radius: 16px 4px 4px 6px; pointer-events: none;
+  background: linear-gradient(180deg, transparent 17%, var(--seat) 17% 18.2%, transparent 18.2% 70%, var(--seat) 70% 71.2%, transparent 71.2%), linear-gradient(var(--side-dir), #060509, #1a1524 85%, #2a2338); }
+.cab.p1 .cabSide { --side-dir: 90deg; right: 0; transform-origin: right; transform: rotateY(90deg); }
+.cab.p2 .cabSide { --side-dir: 270deg; left: 0; transform-origin: left; transform: rotateY(-90deg); }
 
 .marquee {
   margin: 12px 12px 0; padding: 10px 14px; border-radius: 8px 8px 3px 3px; color: #0a0810;
@@ -211,17 +213,26 @@ body:has(> #lobby:not([hidden])), body:has(> #room:not([hidden])) {
 .cab.gridOpen .charView, .cab.gridOpen .card, .cab.gridOpen .levels { display: none; }
 
 /* 조작판: 앞으로 기울어진 판 위에 조이스틱과 버튼 */
+/* 조작판: 위쪽 모서리가 화면 아래에 붙고, 아래쪽이 앞으로 나온 비스듬한 선반이에요. 앞에는 세로 턱이 있어요. */
 .panel {
-  position: relative; margin: 14px -10px 0; padding: 16px 20px 18px; border-radius: 6px 6px 12px 12px;
+  --tilt: 50deg;
+  position: relative; margin: 16px -12px 0; padding: 18px 20px 20px; border-radius: 6px 6px 4px 4px;
   display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; justify-items: center; gap: 10px;
-  background: linear-gradient(180deg, #2c2539, #17131f); transform-origin: top; transform: rotateX(16deg);
-  box-shadow: inset 0 2px 0 rgba(255, 255, 255, .09), inset 0 0 0 2px #0a0810, 0 14px 18px -10px #000;
+  background: linear-gradient(180deg, #221c2e, #2e2740); transform-style: preserve-3d; transform-origin: top; transform: rotateX(var(--tilt));
+  box-shadow: inset 0 2px 0 rgba(255, 255, 255, .1), inset 0 0 0 2px #0a0810;
 }
-.stick { display: flex; align-items: center; gap: 8px; }
-.joystick { width: 44px; height: 54px; flex: none;
-  background: radial-gradient(circle at 42% 22%, #fff 0 2px, var(--seat) 3px 11px, color-mix(in srgb, var(--seat) 45%, #000) 13px, transparent 14px),
-    linear-gradient(#9a95a8, #4b4658) 50% 22px / 6px 22px no-repeat,
-    radial-gradient(50% 30% at 50% 86%, #050407 0 70%, transparent 74%); }
+.panel::after { content: ""; position: absolute; left: 0; right: 0; top: 100%; height: 26px; border-radius: 0 0 8px 8px; pointer-events: none;
+  transform-origin: top; transform: rotateX(calc(var(--tilt) * -1));
+  background: linear-gradient(180deg, var(--seat) 0 2px, #191521 2px, #0b0910); box-shadow: 0 0 16px -4px var(--seat); }
+.stick { display: flex; align-items: center; gap: 8px; transform-style: preserve-3d; }
+/* 조이스틱: 받침은 선반 위에 납작하게, 막대와 공은 선반에서 위로 솟아요. */
+.joystick { position: relative; width: 48px; height: 48px; flex: none; transform-style: preserve-3d;
+  background: radial-gradient(circle, #4a4258 0 5px, #121017 6px 15px, #3a3348 16px 19px, #0c0a11 20px 22px, transparent 23px); }
+.joystick i { position: absolute; left: 50%; bottom: 50%; width: 30px; height: 62px; margin-left: -15px; transform-origin: 50% 100%; transform: rotateX(-74deg);
+  background:
+    radial-gradient(circle at 38% 32%, #fff 0 2px, color-mix(in srgb, var(--seat) 55%, #fff) 4px, var(--seat) 9px, color-mix(in srgb, var(--seat) 45%, #000) 15px, transparent 15.5px) 50% 0 / 30px 30px no-repeat,
+    linear-gradient(90deg, #2a2733, #8d889a 30%, #e2dfe8 45%, #77727f 65%, #24212c) 50% 100% / 8px 40px no-repeat; }
+.joystick::after { content: ""; position: absolute; left: 30%; top: 8%; width: 46px; height: 22px; border-radius: 50%; background: radial-gradient(closest-side, rgba(0, 0, 0, .55), transparent); pointer-events: none; }
 .pick, .allButton {
   font-family: var(--deck); color: var(--a-text); border: 0; cursor: pointer;
   background: radial-gradient(circle at 40% 30%, #54496b, #241e31 70%);
@@ -238,7 +249,7 @@ body:has(> #lobby:not([hidden])), body:has(> #room:not([hidden])) {
 .cab .ready:active { transform: translateY(3px); }
 .cab .ready[aria-pressed="true"] { transform: translateY(3px); box-shadow: 0 2px 0 color-mix(in srgb, var(--seat) 35%, #000), 0 0 0 3px #0a0810, 0 0 0 5px var(--seat), 0 0 30px var(--seat); }
 .cab .ready:disabled { cursor: default; }
-.cab .keys { margin: 16px 16px 0; display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 14px; font-size: 13px; color: var(--a-dim); }
+.cab .keys { margin: 40px 16px 0; display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 14px; font-size: 13px; color: var(--a-dim); }
 .cab .keys span { display: inline-flex; align-items: center; gap: 4px; }
 .cab kbd { font-family: var(--body); font-size: 12px; color: var(--a-text); background: #0b0910; border: 1px solid #3a3150; border-bottom-width: 3px; border-radius: 4px; padding: 0 6px; }
 .coin { margin: 16px auto 0; display: flex; align-items: center; justify-content: center; gap: 14px; padding: 10px 16px; border-radius: 6px; background: #0b0910; box-shadow: inset 0 0 0 2px #2b2438; }
@@ -254,7 +265,10 @@ body:has(> #lobby:not([hidden])), body:has(> #room:not([hidden])) {
   .cabinets { grid-template-columns: minmax(0, 1fr); perspective: none; }
   .cab.p1, .cab.p2 { transform: none; }
   .cabSide { display: none; }
-  .panel { transform: none; margin-inline: 0; grid-template-columns: auto minmax(0, 1fr); }
+  .panel { --tilt: 0deg; margin-inline: 0; grid-template-columns: auto minmax(0, 1fr); }
+  .panel::after { display: none; }
+  .joystick i { transform: none; height: 44px; }
+  .cab .keys { margin-top: 16px; }
   .cab .ready { grid-column: 1 / -1; justify-self: stretch; }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -294,6 +308,7 @@ body:has(> #lobby:not([hidden])), body:has(> #room:not([hidden])) {
 .themePick button[aria-pressed="true"] { border-color: var(--flesh); }
 .themePick i { width: 12px; height: 12px; border-radius: 50%; border: 1px solid rgba(0, 0, 0, .3); }
 #homeHelp { justify-self: center; }
+.credit { margin: 6px 0 0; font-size: 12px; letter-spacing: .5px; color: var(--muted); opacity: .8; }
 
 #game { max-width: min(100%, calc((100dvh - 90px) * 16 / 9)); margin: 0 auto; display: grid; gap: 10px; position: relative; }
 #court { width: 100%; aspect-ratio: 16 / 9; display: block; background: var(--night); }
@@ -346,6 +361,7 @@ body:has(> #lobby:not([hidden])), body:has(> #room:not([hidden])) {
   </div>
   <div class="themePick" id="themePick" role="group" aria-label="테마"><span>테마</span></div>
   <button id="homeHelp" class="ghost">도움말 · 조작키 바꾸기</button>
+  <p class="credit">made by 방윤건</p>
 </section>
 
 <section id="online" class="onlineBox" hidden>
@@ -391,7 +407,7 @@ body:has(> #lobby:not([hidden])), body:has(> #room:not([hidden])) {
         <div class="charGrid" id="roomGrid0"></div>
       </div></div>
       <div class="panel">
-        <div class="stick"><button class="pick roomPick" data-seat="0" data-step="-1" aria-label="1P 이전 캐릭터">◀</button><span class="joystick" aria-hidden="true"></span><button class="pick roomPick" data-seat="0" data-step="1" aria-label="1P 다음 캐릭터">▶</button></div>
+        <div class="stick"><button class="pick roomPick" data-seat="0" data-step="-1" aria-label="1P 이전 캐릭터">◀</button><span class="joystick" aria-hidden="true"><i></i></span><button class="pick roomPick" data-seat="0" data-step="1" aria-label="1P 다음 캐릭터">▶</button></div>
         <button class="allButton roomAll" data-seat="0">전체 보기</button>
         <button class="ready" id="roomReady0" aria-pressed="false"></button>
       </div>
@@ -412,7 +428,7 @@ body:has(> #lobby:not([hidden])), body:has(> #room:not([hidden])) {
         <div class="charGrid" id="roomGrid1"></div>
       </div></div>
       <div class="panel">
-        <div class="stick"><button class="pick roomPick" data-seat="1" data-step="-1" aria-label="2P 이전 캐릭터">◀</button><span class="joystick" aria-hidden="true"></span><button class="pick roomPick" data-seat="1" data-step="1" aria-label="2P 다음 캐릭터">▶</button></div>
+        <div class="stick"><button class="pick roomPick" data-seat="1" data-step="-1" aria-label="2P 이전 캐릭터">◀</button><span class="joystick" aria-hidden="true"><i></i></span><button class="pick roomPick" data-seat="1" data-step="1" aria-label="2P 다음 캐릭터">▶</button></div>
         <button class="allButton roomAll" data-seat="1">전체 보기</button>
         <button class="ready" id="roomReady1" aria-pressed="false"></button>
       </div>
@@ -454,7 +470,7 @@ body:has(> #lobby:not([hidden])), body:has(> #room:not([hidden])) {
         <div class="charGrid" id="grid0"></div>
       </div></div>
       <div class="panel">
-        <div class="stick"><button class="pick" data-seat="0" data-step="-1" aria-label="1P 이전 캐릭터">◀</button><span class="joystick" aria-hidden="true"></span><button class="pick" data-seat="0" data-step="1" aria-label="1P 다음 캐릭터">▶</button></div>
+        <div class="stick"><button class="pick" data-seat="0" data-step="-1" aria-label="1P 이전 캐릭터">◀</button><span class="joystick" aria-hidden="true"><i></i></span><button class="pick" data-seat="0" data-step="1" aria-label="1P 다음 캐릭터">▶</button></div>
         <button class="allButton" data-seat="0" id="all0">전체 보기</button>
         <button class="ready" id="ready0" aria-pressed="false"></button>
       </div>
@@ -475,7 +491,7 @@ body:has(> #lobby:not([hidden])), body:has(> #room:not([hidden])) {
         <div class="charGrid" id="grid1"></div>
       </div></div>
       <div class="panel">
-        <div class="stick"><button class="pick" data-seat="1" data-step="-1" aria-label="2P 이전 캐릭터">◀</button><span class="joystick" aria-hidden="true"></span><button class="pick" data-seat="1" data-step="1" aria-label="2P 다음 캐릭터">▶</button></div>
+        <div class="stick"><button class="pick" data-seat="1" data-step="-1" aria-label="2P 이전 캐릭터">◀</button><span class="joystick" aria-hidden="true"><i></i></span><button class="pick" data-seat="1" data-step="1" aria-label="2P 다음 캐릭터">▶</button></div>
         <button class="allButton" data-seat="1" id="all1">전체 보기</button>
         <button class="ready" id="ready1" aria-pressed="false"></button>
       </div>
@@ -597,12 +613,12 @@ const THEMES = {
   sunset: { font: 'Bagel Fat One', p: ['#168f80', '#d6336c'], flesh: '#ff6f3c', ember: '#ff6f3c', text: '#3b2416', night: '#3b2416', ball: '#fffdf7', net: '#fff6ec', netTop: '#3b2416',
     sky: ['#ff8a5c', '#ffd29a'], floor: '#c98955', edge: '#8f5a33', scene: ['#ff8a5c', '#6b3e4a', '#ffe8d2'], sceneText: '#3b2416' },
 };
-const THEME_NAMES = { night: '포장마차 밤', gym: '낮 체육관', beach: '여름 해변', retro: '레트로 오락실', sunset: '노을 운동장' };
+const THEME_NAMES = { retro: '레트로 오락실', night: '포장마차 밤', gym: '낮 체육관', beach: '여름 해변', sunset: '노을 운동장' };
 let THEME_NAME = (() => {
   try {
     const t = new URLSearchParams(location.search).get('theme') || localStorage.getItem('theme');
-    return THEMES[t] ? t : 'night';
-  } catch (e) { return 'night'; }
+    return THEMES[t] ? t : 'retro';
+  } catch (e) { return 'retro'; }
 })();
 const COLORS = { skin: '#9a3a72', skinDark: '#6f2653', ...THEMES[THEME_NAME] };
 let DISPLAY = `"${COLORS.font}", "Malgun Gothic", sans-serif`;
