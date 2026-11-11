@@ -148,16 +148,18 @@ body:has(> #lobby:not([hidden])), body:has(> #room:not([hidden])) {
   box-shadow: inset 0 0 0 2px var(--a-edge), inset 0 2px 0 rgba(255, 255, 255, .06);
   transition: transform .4s;
 }
-/* 1P는 오른쪽(안쪽) 모서리가, 2P는 왼쪽(안쪽) 모서리가 앞으로 나와요. */
-.cab.p1 { transform: rotateY(12deg); }
-.cab.p2 { --seat: var(--a-p2); transform: rotateY(-12deg); }
+/* 바깥쪽으로 돌아요: 1P는 오른쪽(안쪽) 모서리가, 2P는 왼쪽(안쪽) 모서리가 앞으로 나와요.
+   CSS rotateY(θ)는 점 (x,0,0)을 z = -x·sinθ 로 보내요. 그래서 1P는 음수, 2P는 양수예요. */
+.cab.p1 { transform: rotateY(-12deg); }
+.cab.p2 { --seat: var(--a-p2); transform: rotateY(12deg); }
 .cab::after { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; border-inline: 3px solid var(--seat); opacity: .7; box-shadow: 0 0 22px -4px var(--seat); }
 .cab::before { content: ""; position: absolute; left: 4%; right: 4%; bottom: -30px; height: 34px; background: radial-gradient(closest-side, rgba(0, 0, 0, .8), transparent); pointer-events: none; }
 /* 옆면: 앞면 안쪽 모서리에 붙어서 뒤로 뻗어요. */
-.cabSide { position: absolute; top: 0; bottom: 0; width: 150px; border-radius: 16px 4px 4px 6px; pointer-events: none;
+.cabSide { position: absolute; top: 0; bottom: 0; width: 150px; border-radius: 16px 4px 4px 6px; pointer-events: none; backface-visibility: hidden;
   background: linear-gradient(180deg, transparent 17%, var(--seat) 17% 18.2%, transparent 18.2% 70%, var(--seat) 70% 71.2%, transparent 71.2%), linear-gradient(var(--side-dir), #060509, #1a1524 85%, #2a2338); }
-.cab.p1 .cabSide { --side-dir: 90deg; right: 0; transform-origin: right; transform: rotateY(90deg); }
-.cab.p2 .cabSide { --side-dir: 270deg; left: 0; transform-origin: left; transform: rotateY(-90deg); }
+/* 옆면은 앞면 바깥에 붙인 판을 90도 돌려 뒤로 뻗게 해요. 앞면(그림 쪽)이 바깥을 봐야 보여요. */
+.cab.p1 .cabSide { --side-dir: 270deg; left: 100%; transform-origin: left; transform: rotateY(90deg); }
+.cab.p2 .cabSide { --side-dir: 90deg; right: 100%; transform-origin: right; transform: rotateY(-90deg); }
 
 .marquee {
   margin: 12px 12px 0; padding: 10px 14px; border-radius: 8px 8px 3px 3px; color: #0a0810;
@@ -228,7 +230,7 @@ body:has(> #lobby:not([hidden])), body:has(> #room:not([hidden])) {
 /* 조이스틱: 받침은 선반 위에 납작하게, 막대와 공은 선반에서 위로 솟아요. */
 .joystick { position: relative; width: 48px; height: 48px; flex: none; transform-style: preserve-3d;
   background: radial-gradient(circle, #4a4258 0 5px, #121017 6px 15px, #3a3348 16px 19px, #0c0a11 20px 22px, transparent 23px); }
-.joystick i { position: absolute; left: 50%; bottom: 50%; width: 30px; height: 62px; margin-left: -15px; transform-origin: 50% 100%; transform: rotateX(-74deg);
+.joystick i { position: absolute; left: 50%; bottom: 50%; width: 30px; height: 62px; margin-left: -15px; transform-origin: 50% 100%; transform: rotateX(calc(var(--tilt) * -1));
   background:
     radial-gradient(circle at 38% 32%, #fff 0 2px, color-mix(in srgb, var(--seat) 55%, #fff) 4px, var(--seat) 9px, color-mix(in srgb, var(--seat) 45%, #000) 15px, transparent 15.5px) 50% 0 / 30px 30px no-repeat,
     linear-gradient(90deg, #2a2733, #8d889a 30%, #e2dfe8 45%, #77727f 65%, #24212c) 50% 100% / 8px 40px no-repeat; }
