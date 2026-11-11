@@ -26,17 +26,18 @@ const BASE = {
   },
 };
 
+// card: 캐릭터 고르기 화면의 짧은 카드. stats는 공격·수비·난이도(1~5)로 느낌을 보여줘요.
 // 60프레임이 1초예요. gauge는 공을 칠 때 차는 양(1이면 가득)입니다.
 const CHARACTERS = [
   {
     ...BASE, id: 'goguma', name: '고구마',
-    card: { type: '기본형', trait: '특별한 능력 없음', special: '없음', gauge: '없음' },
+    card: { type: '균형형', stats: { atk: 3, def: 3, diff: 1 }, trait: '특별한 능력 없음', special: '없음', gauge: '없음' },
     colors: { skin: '#9a3a72', edge: '#6f2653', face: '#f6c64a' },
     ability: ['능력이 없는 기본 캐릭터예요.'],
   },
   {
     ...BASE, id: 'cheese', name: '치즈',
-    card: { type: '제어형', trait: '땅에서 위로 친 공이 느려짐', special: '누르는 동안 모든 공 감속 (최대 3.3초)', gauge: '좌우 공격' },
+    card: { type: '수비형', stats: { atk: 2, def: 5, diff: 3 }, trait: '땅에서 위로 친 공이 느려짐', special: '누르는 동안 모든 공 감속 (최대 3.3초)', gauge: '좌우 공격' },
     colors: { skin: '#f4c430', edge: '#b98a12', face: '#fde88a' },
     groundUpSlow: 0.6,
     gauge: { side: 0.2 },
@@ -45,7 +46,7 @@ const CHARACTERS = [
   },
   {
     ...BASE, id: 'watermelon', name: '수박',
-    card: { type: '파워형', trait: '꾹 눌렀다 떼면 강타 (중 0.7초 · 강 1.2초)', special: '5초 동안 항상 강타', gauge: '공을 칠 때마다' },
+    card: { type: '공격형', stats: { atk: 5, def: 2, diff: 3 }, trait: '꾹 눌렀다 떼면 강타 (중 0.7초 · 강 1.2초)', special: '5초 동안 항상 강타', gauge: '공을 칠 때마다' },
     colors: { skin: '#2f8f4e', edge: '#1b5c31', face: '#f0606a' },
     charge: { mid: 42, strong: 72, midPower: 1.25, strongPower: 1.5 },
     gauge: { side: 0.15, up: 0.15, down: 0.15 },
@@ -54,7 +55,7 @@ const CHARACTERS = [
   },
   {
     ...BASE, id: 'cabbage', name: '배추',
-    card: { type: '범위형', trait: '공격 범위가 넓음', special: '내 코트 전체 범위 공격, 무조건 상대 코트로', gauge: '좌우 공격' },
+    card: { type: '수비형', stats: { atk: 3, def: 4, diff: 2 }, trait: '공격 범위가 넓음', special: '내 코트 전체 범위 공격, 무조건 상대 코트로', gauge: '좌우 공격' },
     colors: { skin: '#8fce5c', edge: '#4f8f33', face: '#eef7d2' },
     zoneScale: 1.2,
     gauge: { side: 0.34 },
@@ -63,7 +64,7 @@ const CHARACTERS = [
   },
   {
     ...BASE, id: 'coconut', name: '코코넛',
-    card: { type: '몸통형', trait: '몸에 닿은 공이 저절로 튕김', skill: '공격 키: 공중 스파이크 · 땅에서 다이브', special: '없음', gauge: '없음', range: '몸통' },
+    card: { type: '수비형', stats: { atk: 4, def: 4, diff: 5 }, trait: '몸에 닿은 공이 저절로 튕김', skill: '공격 키: 공중 스파이크 · 땅에서 다이브', special: '없음', gauge: '없음' },
     colors: { skin: '#6a4227', edge: '#3f2615', face: '#f7eedd' },
     contact: true, bodyR: 34, contactGap: 14,
     bounce: { vx: 8.5, vy: -13, keep: 0.3 }, // 몸에 닿아 튕길 때 (전에는 vx 7, vy -10)
@@ -73,7 +74,7 @@ const CHARACTERS = [
   },
   {
     ...BASE, id: 'blueberry', name: '블루베리',
-    card: { type: '스피드형', trait: '이동이 빠르고 공격 범위가 작음', special: '대시, 맞힌 공은 잠깐 빨라짐', gauge: '2.5초마다 저절로' },
+    card: { type: '공격형', stats: { atk: 4, def: 3, diff: 3 }, trait: '이동이 빠르고 공격 범위가 작음', special: '대시, 맞힌 공은 잠깐 빨라짐', gauge: '2.5초마다 저절로' },
     move: 6.2, zoneScale: 0.85,
     colors: { skin: '#3f4fa8', edge: '#28316e', face: '#c8d0f5' },
     autoGauge: 150,
@@ -82,7 +83,7 @@ const CHARACTERS = [
   },
   {
     ...BASE, id: 'tomato', name: '토마토',
-    card: { type: '트릭형', trait: '특별한 능력 없음', special: '토마토공 생성 (상대가 치면 터지고, 못 받으면 내 득점)', gauge: '좌우 공격' },
+    card: { type: '공격형', stats: { atk: 5, def: 2, diff: 4 }, trait: '특별한 능력 없음', special: '토마토공 생성 (상대가 치면 터지고, 못 받으면 내 득점)', gauge: '좌우 공격' },
     colors: { skin: '#ef4a36', edge: '#a8281b', face: '#ffd0c4' },
     bareFace: true, // 얼굴 판 없이 몸에 바로 눈을 그려요
     gauge: { side: 0.25 }, // 배추(0.34)보다 조금 느리게 차요
@@ -92,7 +93,7 @@ const CHARACTERS = [
   },
   {
     ...BASE, id: 'corn', name: '옥수수',
-    card: { type: '사격형', trait: '총알로만 공을 침 · 점프가 높음', skill: '공격 키: 총알 (탄창 3칸, 1.5초마다 장전)', special: '총알 3개로 센 총알, 맞은 상대는 2초 기절', gauge: '탄창', range: '원거리' },
+    card: { type: '공격형', stats: { atk: 4, def: 2, diff: 5 }, trait: '총알로만 공을 침 · 점프가 높음', skill: '공격 키: 총알 (탄창 3칸, 1.5초마다 장전)', special: '총알 3개로 센 총알, 맞은 상대는 2초 기절', gauge: '탄창' },
     colors: { skin: '#f7d34a', edge: '#b88d14', face: '#fff3c0' },
     jump: 14.5, jumpCut: 5, // 점프 키를 일찍 떼면 낮게 떠요
     gun: {
