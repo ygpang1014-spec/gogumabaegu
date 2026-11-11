@@ -76,9 +76,24 @@ const CHARACTERS = [
   },
   {
     ...BASE, id: 'tomato', name: '토마토',
-    colors: { skin: '#e2412f', edge: '#9c2419', face: '#ffd0c4' },
-    tomatoBall: { gravity: 0.6, pace: 0.7 }, // 토마토공: 중력은 보통 공의 0.6배, 모든 움직임은 0.7배 빠르기
-    ability: ['상대가 서브할 때 내 코트에 토마토공이 하나 더 내려와요.', '토마토공은 아주 천천히 움직여요. 상대 코트에 떨어지면 내 득점, 내 코트에 떨어지면 그냥 사라져요.', '둘 다 토마토공을 칠 수 있어요.', '필살기는 없어요.'],
+    colors: { skin: '#ef4a36', edge: '#a8281b', face: '#ffd0c4' },
+    bareFace: true, // 얼굴 판 없이 몸에 바로 눈을 그려요
+    gauge: { side: 0.25 }, // 배추(0.34)보다 조금 느리게 차요
+    special: 'tomato',
+    toss: { frames: 24, height: 150, speed: 15 }, // 스파이크: 띄우고 24프레임 뒤에 쳐요
+    ability: ['필살기: 토마토공을 만들어 바로 쳐요. 위를 누르면 위로, 아래를 누르면 스파이크.', '스파이크는 공을 띄우고 잠깐 뒤에 쳐요. 그 사이 상대가 맞히면 토마토공이 터져요.', '상대가 토마토공을 쳐서 받으면 터져요. 못 받고 상대 코트에 떨어지면 내 득점.', '게이지는 좌우 공격으로 차요.'],
+  },
+  {
+    ...BASE, id: 'corn', name: '옥수수',
+    colors: { skin: '#f7d34a', edge: '#b88d14', face: '#fff3c0' },
+    jump: 14.5, jumpCut: 5, // 점프 키를 일찍 떼면 낮게 떠요
+    gun: {
+      max: 4, reload: 54, gap: 10,   // 탄창 4칸, 0.9초마다 1칸, 연사 간격
+      speed: 13, r: 7, upAngle: 35, downAngle: 30,
+      slowFrames: 90, slowMove: 0.55, // 맞은 상대는 1.5초 동안 느려져요
+      ultCost: 3, ultPower: 1.4, ultSpeed: 16, ultR: 12,
+    },
+    ability: ['공격 키로 보는 쪽에 옥수수 총알을 쏴요. 공에 맞으면 공격처럼 쳐져요.', '위를 보면 조금 위로, 점프 중 아래를 보면 조금 아래로 쏴요. 네트에 닿으면 사라져요.', '탄창 4칸은 저절로 차요. 총알에 맞은 상대는 잠깐 느려져요.', '점프가 높고, 오래 누를수록 높이 떠요.', '필살기: 총알 3개로 센 총알. 공은 세게 쳐지고, 상대가 맞으면 그 판은 내 득점.'],
   },
 ];
 
@@ -145,11 +160,16 @@ function makePlayer(side, char, prev) {
     lock: 0,      // 다이브 뒤 경직
     spike: 0,     // 코코넛 스파이크 입력이 살아 있는 프레임
     contactGap: 0,
+    toss: 0,      // 토마토 스파이크 준비 남은 프레임
+    ammo: char.gun ? char.gun.max : 0,
+    reload: 0,
+    fireCd: 0,
+    slowed: 0,    // 옥수수 총알에 맞아 느려진 남은 프레임
   };
 }
 
 function makeMatch(chars, target, levels = [null, null], deuce = false, mode = 'versus', settings = null) {
-  const s = { chars, target, deuce, score: [0, 0], server: 0, events: [], players: [null, null], touch: 0, rally: 0, ai: levels.map(makeAi), mode, clock: 0, stage: 0, cleared: false, notice: null };
+  const s = { chars, target, deuce, score: [0, 0], server: 0, events: [], players: [null, null], bullets: [], touch: 0, rally: 0, ai: levels.map(makeAi), mode, clock: 0, stage: 0, cleared: false, notice: null };
   s.env = { ...BASE_ENV, ...settings, windNow: 0, netTop: NET.top };
   s.env.netTop = s.env.netGoal;
   resetRound(s);
@@ -160,10 +180,7 @@ function resetRound(s) {
   s.players = s.players.map((prev, i) => makePlayer(i, s.chars[i], prev));
   s.balls = [makeBall(s.server === 0 ? 240 : 720)];
   syncBalls(s);
-  // 토마토: 상대가 서브할 때 내 코트에도 토마토공이 내려와요. 공지키기에서는 없어요.
-  if (s.mode !== 'coop') s.players.forEach(p => {
-    if (p.char.tomatoBall && s.server !== p.side) s.balls.push(makeTomato(p));
-  });
+  s.bullets = [];
   s.touch++;
   s.rally = 0;
   s.phase = 'ready';
@@ -174,8 +191,22 @@ function makeBall(x) {
   return { x, y: BALL.serveHeight, vx: 0, vy: 0, slow: 1 };
 }
 
-function makeTomato(p) {
-  return { ...makeBall(p.side === 0 ? 240 : 720), kind: 'tomato', owner: p.side, grav: p.char.tomatoBall.gravity, pace: p.char.tomatoBall.pace };
+function makeTomato(p, x, y) {
+  return { ...makeBall(x), y, kind: 'tomato', owner: p.side };
+}
+
+// 상대가 토마토공을 치면 바로 터져요.
+function popIfFoe(s, p, b) {
+  if (b.kind !== 'tomato' || b.owner === p.side) return false;
+  removeBall(s, b);
+  s.touch++;
+  return true;
+}
+
+function removeBall(s, b) {
+  const i = s.balls.indexOf(b);
+  if (i >= 0) s.balls.splice(i, 1);
+  s.events.push({ type: 'pop', x: b.x, y: b.y });
 }
 
 // 공 개수를 설정에 맞춰요. 새 공은 양쪽 코트에 번갈아 떨어져요. 토마토공은 세지 않아요.
@@ -220,14 +251,14 @@ function addGauge(p, shot) {
 }
 
 // 배추 필살기: 보는 방향과 상관없이 상대 코트로 가장 빨리 넘어가는 궤적을 찾아요.
-function wideShot(s, p, b) {
+function wideShot(s, p, b, top = p.char.wideSpeed) {
   const toward = p.side === 0 ? 1 : -1;
   // 넘길 궤적이 없을 만큼 네트에 붙었거나 설정이 극단적이면 네트를 뚫고 넘어가요.
   for (const ghost of [0, toward]) {
     let best = null, soonest = Infinity;
-    for (let speed = p.char.wideSpeed; speed >= 3; speed -= 2) {
+    for (let speed = top; speed >= 3; speed -= 2) {
       for (let vy = -3; vy >= -19; vy--) {
-        const end = predict({ x: b.x, y: b.y, vx: speed * toward, vy, ghost, grav: b.grav }, s.env.speed, s.env);
+        const end = predict({ x: b.x, y: b.y, vx: speed * toward, vy, ghost }, s.env.speed, s.env);
         if ((end.x - NET.x) * toward <= 0) continue;
         const cross = end.path.findIndex(spot => !onMySide(p, spot.x));
         if (cross < soonest) { best = { vx: speed * toward, vy, ghost }; soonest = cross; }
@@ -238,6 +269,16 @@ function wideShot(s, p, b) {
   return { vx: 6 * toward, vy: -19, ghost: toward };
 }
 
+// 토마토 스파이크: 상대 코트로 넘어가는 가장 가파른 내리꽂기
+function spikeShot(s, p, b) {
+  const toward = p.side === 0 ? 1 : -1, speed = p.char.toss.speed;
+  for (let vy = 12; vy >= -10; vy--) {
+    const end = predict({ x: b.x, y: b.y, vx: speed * toward, vy }, s.env.speed, s.env);
+    if ((end.x - NET.x) * toward > 0) return { vx: speed * toward, vy };
+  }
+  return wideShot(s, p, b, speed);
+}
+
 // 온라인: 내 화면에 보이던 조금 전 위치의 공에 닿았어도 맞은 걸로 쳐요.
 function touches(s, p, b, test) {
   if (test(b)) return true;
@@ -246,10 +287,13 @@ function touches(s, p, b, test) {
   return false;
 }
 
-function sendBall(s, p, b, dir, power, slow) {
-  const shot = dir === 'wide' ? wideShot(s, p, b) : p.char.shots[dir];
-  b.vx = dir === 'wide' ? shot.vx : shot.vx * power * p.facing;
-  b.vy = dir === 'wide' ? shot.vy : shot.vy * power;
+function sendBall(s, p, b, dir, power, slow, facing = p.facing) {
+  if (popIfFoe(s, p, b)) { s.events.push({ type: 'hit', dir, x: b.x, y: b.y }); return; }
+  const aimed = dir === 'wide' || dir === 'spike';
+  const shot = dir === 'wide' ? wideShot(s, p, b) : dir === 'spike' ? spikeShot(s, p, b) : p.char.shots[dir];
+  b.vx = aimed ? shot.vx : shot.vx * power * facing;
+  b.vy = aimed ? shot.vy : shot.vy * power;
+  b.held = false;
   b.ghost = shot.ghost || 0;
   b.slow = slow;
   b.boost = 0;
@@ -308,13 +352,15 @@ function updateContact(s, p, input) {
   const r = s.env.ballR;
   const b = s.balls.find(x => touches(s, p, x, y => Math.hypot(y.x - p.x, y.y - (p.y - 38)) < reach + r));
   if (!b) return;
+  p.contactGap = c.contactGap;
+  if (popIfFoe(s, p, b)) { s.events.push({ type: 'hit', dir: 'side', x: b.x, y: b.y }); return; }
   const toward = p.side === 0 ? 1 : -1;
+  b.held = false;
   b.slow = 1;
   b.boost = 0;
   b.hist = [];
   s.touch++;
   s.rally++;
-  p.contactGap = c.contactGap;
   if (p.spike > 0 && !p.onGround) {
     const aim = input.up ? c.spike.up : input.down ? c.spike.down : c.spike.flat;
     b.vx = aim.vx * toward;
@@ -346,6 +392,7 @@ function updateSpecial(s, p, input) {
     return;
   }
   if (!c.special || !input.specialPressed || p.gauge < 1 || p.rage > 0 || s.phase !== 'play') return;
+  if (c.special === 'tomato' && s.mode === 'coop') return; // 공지키기에서는 토마토공을 못 만들어요
   s.events.push({ type: 'special', side: p.side });
   if (c.special === 'rage') {
     p.rage = c.rageFrames;
@@ -358,6 +405,88 @@ function updateSpecial(s, p, input) {
     p.dash = c.dashFrames;
     p.dashSpent = false;
     p.swing = null;
+  } else if (c.special === 'tomato') {
+    p.gauge = 0;
+    p.swing = null;
+    if (p.look === 'down') {
+      // 스파이크: 머리 위로 띄우고 잠깐 뒤에 쳐요.
+      const b = makeTomato(p, p.x + p.facing * 12, p.y - c.toss.height);
+      b.held = true;
+      s.balls.push(b);
+      p.toss = c.toss.frames;
+      p.tossBall = b;
+    } else {
+      const dir = p.look === 'up' ? 'up' : 'side';
+      const z = zoneFor(p, dir);
+      const b = makeTomato(p, clamp(z.x, 30, W - 30), z.y);
+      s.balls.push(b);
+      sendBall(s, p, b, dir, 1, 1);
+      p.gauge = 0; // 필살기로 친 공은 게이지를 채우지 않아요
+    }
+  }
+}
+
+function updateToss(s, p) {
+  if (--p.toss > 0 || !p.tossBall) return;
+  const b = p.tossBall;
+  p.tossBall = null;
+  if (s.phase === 'play' && b.held && s.balls.includes(b)) {
+    sendBall(s, p, b, 'spike', 1, 1);
+    p.swing = { dir: 'down', age: 0, struck: [b], power: 1, grounded: p.onGround };
+  }
+}
+
+// ── 옥수수 총 ──
+function bulletAim(p, dir, strong) {
+  const g = p.char.gun, speed = strong ? g.ultSpeed : g.speed;
+  const deg = dir === 'up' ? -g.upAngle : dir === 'down' ? g.downAngle : 0;
+  const a = deg * Math.PI / 180;
+  return {
+    x: p.x + p.facing * 30, y: p.y - 44,
+    vx: Math.cos(a) * speed * p.facing, vy: Math.sin(a) * speed,
+    r: strong ? g.ultR : g.r, dir, facing: p.facing, side: p.side, strong,
+  };
+}
+
+function gunDir(p) {
+  return p.look === 'up' ? 'up' : p.look === 'down' && !p.onGround ? 'down' : 'side';
+}
+
+function updateGun(s, p, input) {
+  const g = p.char.gun;
+  if (p.ammo < g.max) { if (++p.reload >= g.reload) { p.ammo++; p.reload = 0; } } else p.reload = 0;
+  if (p.fireCd > 0) p.fireCd--;
+  if (s.phase !== 'play' || p.fireCd > 0) return;
+  const strong = input.specialPressed && p.ammo >= g.ultCost;
+  if (!strong && !(input.attack && p.ammo >= 1)) return;
+  s.bullets.push(bulletAim(p, gunDir(p), strong));
+  p.ammo -= strong ? g.ultCost : 1;
+  p.fireCd = g.gap;
+  s.events.push({ type: strong ? 'special' : 'shot', side: p.side });
+}
+
+// 총알이 네트에 닿았는지
+function bulletBlocked(u, env) {
+  return Math.abs(u.x - NET.x) < NET.halfW + u.r && u.y + u.r > env.netTop;
+}
+
+function updateBullets(s) {
+  for (const u of s.bullets.slice()) {
+    const owner = s.players[u.side], foe = s.players[1 - u.side], g = owner.char.gun;
+    u.x += u.vx;
+    u.y += u.vy;
+    let gone = u.x < -20 || u.x > W + 20 || u.y < -20 || u.y > GROUND || bulletBlocked(u, s.env);
+    const b = !gone && s.balls.find(x => Math.hypot(x.x - u.x, x.y - u.y) < s.env.ballR + u.r);
+    if (b) {
+      sendBall(s, owner, b, u.dir, u.strong ? g.ultPower : 1, 1, u.facing);
+      gone = true;
+    } else if (!gone && s.mode !== 'coop' && Math.hypot(foe.x - u.x, foe.y - 38 - u.y) < 30 + u.r) {
+      gone = true;
+      s.events.push({ type: 'zap', x: u.x, y: u.y, strong: u.strong });
+      if (u.strong) { scorePoint(s, u.side, foe.x); return; }
+      foe.slowed = g.slowFrames;
+    }
+    if (gone) s.bullets.splice(s.bullets.indexOf(u), 1);
   }
 }
 
@@ -379,14 +508,16 @@ function updateDash(s, p) {
 function updatePlayer(s, p, input) {
   const c = p.char;
   const dir = (input.right ? 1 : 0) - (input.left ? 1 : 0);
-  const frozen = p.dash > 0 || p.dive > 0 || p.lock > 0;
+  const frozen = p.dash > 0 || p.dive > 0 || p.lock > 0 || p.toss > 0;
+  if (p.slowed > 0) p.slowed--;
   if (!frozen && dir !== 0) p.facing = dir;
   if (p.dash > 0) updateDash(s, p);
   else if (p.dive > 0) {
     p.x += p.facing * c.dive.speed;
     if (--p.dive === 0) p.lock = c.dive.recover;
   } else if (p.lock > 0) p.lock--;
-  else p.x += dir * c.move;
+  else if (p.toss > 0) updateToss(s, p);
+  else p.x += dir * c.move * (p.slowed > 0 ? slowMove(s, p) : 1);
   const lo = p.side === 0 ? c.halfW : NET.x + NET.halfW + c.halfW;
   const hi = p.side === 0 ? NET.x - NET.halfW - c.halfW : W - c.halfW;
   p.x = clamp(p.x, lo, hi);
@@ -394,6 +525,7 @@ function updatePlayer(s, p, input) {
   p.look = input.up ? 'up' : input.down ? 'down' : 'side';
 
   if (input.jump && p.onGround && !frozen) { p.vy = -c.jump; p.onGround = false; }
+  if (c.jumpCut && !input.jump && p.vy < -c.jumpCut) p.vy = -c.jumpCut; // 일찍 떼면 낮게
   if (!p.onGround && p.dash === 0) {
     p.vy += c.gravity;
     p.y += p.vy;
@@ -402,8 +534,15 @@ function updatePlayer(s, p, input) {
 
   if (p.cooldown > 0) p.cooldown--;
   updateSpecial(s, p, input);
-  if (c.contact) updateContact(s, p, input);
-  else updateAttack(s, p, input);
+  if (c.gun) updateGun(s, p, input);
+  else if (c.contact) updateContact(s, p, input);
+  else if (p.toss === 0) updateAttack(s, p, input);
+}
+
+// 느려진 정도는 쏜 옥수수의 수치를 따라요.
+function slowMove(s, p) {
+  const g = s.players[1 - p.side].char.gun;
+  return g ? g.slowMove : 1;
 }
 
 function collideNet(b, env) {
@@ -427,12 +566,12 @@ function collideNet(b, env) {
 function ballTime(s, b) {
   const field = Math.min(...s.players.map(p => p.slowing && p.char.slowScale ? p.char.slowScale : 1));
   const time = field < 1 ? Math.min(b.slow, field) : b.slow;
-  return time * (b.pace || 1) * s.env.speed;
+  return time * s.env.speed;
 }
 
 function advanceBall(b, time, env) {
   const r = env.ballR;
-  b.vy += env.gravity * (b.grav || 1) * time;
+  b.vy += env.gravity * time;
   b.vx += env.windNow * time;
   const speed = Math.hypot(b.vx, b.vy);
   if (speed > BALL.maxSpeed) { b.vx *= BALL.maxSpeed / speed; b.vy *= BALL.maxSpeed / speed; }
@@ -446,8 +585,11 @@ function advanceBall(b, time, env) {
 }
 
 function ballLanded(s, b) {
-  const scorer = b.x < NET.x ? 1 : 0;
-  s.events.push({ type: 'point', scorer, x: b.x });
+  scorePoint(s, b.x < NET.x ? 1 : 0, b.x);
+}
+
+function scorePoint(s, scorer, x) {
+  s.events.push({ type: 'point', scorer, x });
   if (s.mode === 'coop') {
     s.phase = 'over';
     s.events.push({ type: 'coopEnd' });
@@ -473,15 +615,12 @@ function updateBalls(s) {
       if (b.hist.length > 16) b.hist.pop();
     }
     if (b.boost > 0 && --b.boost === 0) b.slow = 1; // 블루베리가 빠르게 한 공이 원래대로 돌아와요
+    if (b.held) continue; // 토마토 스파이크 준비 중에는 공이 멈춰 있어요
     advanceBall(b, ballTime(s, b), s.env);
     if (b.y + s.env.ballR >= GROUND) {
       b.y = GROUND - s.env.ballR;
       // 토마토공이 토마토 코트에 떨어지면 그냥 사라져요.
-      if (b.kind === 'tomato' && onMySide(s.players[b.owner], b.x)) {
-        s.balls.splice(s.balls.indexOf(b), 1);
-        s.events.push({ type: 'pop', x: b.x });
-        continue;
-      }
+      if (b.kind === 'tomato' && onMySide(s.players[b.owner], b.x)) { removeBall(s, b); continue; }
       ballLanded(s, b);
       if (s.phase !== 'play') return;
     }
@@ -537,7 +676,8 @@ function step(s, inputs) {
   if (s.phase === 'ready') {
     if (--s.timer <= 0) s.phase = 'play';
   } else if (s.phase === 'play') {
-    updateBalls(s);
+    updateBullets(s);
+    if (s.phase === 'play') updateBalls(s);
   } else if (s.phase === 'point') {
     if (--s.timer <= 0) {
       if (hasWon(s)) { s.phase = 'over'; s.events.push({ type: 'over', winner: s.server }); }
@@ -581,7 +721,7 @@ function currentPower(p) {
 
 function scoreShot(s, p, b, dir) {
   const shot = p.char.shots[dir], power = currentPower(p);
-  const end = predict({ x: b.x, y: b.y, vx: shot.vx * power * p.facing, vy: shot.vy * power, grav: b.grav }, s.env.speed, s.env);
+  const end = predict({ x: b.x, y: b.y, vx: shot.vx * power * p.facing, vy: shot.vy * power }, s.env.speed, s.env);
   if (s.mode === 'coop') return dir === 'down' ? -100 : 50 + end.t;
   if (onMySide(p, end.x)) return dir === 'up' ? 20 : -100;
   return 100 + Math.abs(end.x - s.players[1 - p.side].x) * 0.1 + (dir === 'down' ? 30 : 0) - end.t * 0.1;
@@ -639,8 +779,64 @@ function aiContact(s, p, input, ai, toward, urgent) {
   }
 }
 
+// 총알을 쏘면 공이 어디로 갈지 미리 계산해서 점수를 매겨요.
+function gunScore(s, p, b, dir, strong) {
+  const u = bulletAim(p, dir, strong), ball = { x: b.x, y: b.y, vx: b.vx, vy: b.vy };
+  const time = ballTime(s, b), g = p.char.gun, r = s.env.ballR;
+  for (let t = 0; t < 45; t++) {
+    // 게임과 같은 순서: 총알이 먼저 움직여 공에 닿는지 보고, 그다음 공이 움직여요.
+    u.x += u.vx; u.y += u.vy;
+    if (u.x < -20 || u.x > W + 20 || u.y < -20 || u.y > GROUND || bulletBlocked(u, s.env)) return -Infinity;
+    if (Math.hypot(ball.x - u.x, ball.y - u.y) < r + u.r) {
+      const shot = p.char.shots[dir], power = strong ? g.ultPower : 1;
+      const end = predict({ x: ball.x, y: ball.y, vx: shot.vx * power * u.facing, vy: shot.vy * power }, s.env.speed, s.env);
+      if (s.mode === 'coop') return dir === 'down' ? -100 : 50 + end.t;
+      return onMySide(p, end.x) ? (dir === 'up' ? 20 : -100) : 100 - end.t * 0.1;
+    }
+    if (!b.held) advanceBall(ball, time, s.env);
+    if (ball.y + r >= GROUND) return -Infinity;
+  }
+  return -Infinity;
+}
+
+function aiGun(s, p, input, ai) {
+  const b = ai.ball || s.balls[0];
+  if (ai.skip || s.phase !== 'play' || p.fireCd > 0 || p.ammo < 1 || !b) return;
+  let best = null, bestScore = -Infinity;
+  for (const dir of p.onGround ? ['side', 'up'] : ['side', 'up', 'down']) {
+    const score = gunScore(s, p, b, dir, false);
+    if (score > bestScore) { best = dir; bestScore = score; }
+  }
+  if (bestScore >= 50 || (bestScore > -100 && b.y > GROUND - 90)) {
+    input.attack = true;
+    input.left = input.right = false; // 멈춰서 지금 보는 쪽으로 쏴요
+    input.up = best === 'up';
+    input.down = best === 'down';
+  }
+}
+
 function aiSpecial(s, p, input, ai, toward, pressed) {
   const c = p.char, b = ai.ball || s.balls[0];
+  if (c.gun) {
+    // 센 총알이 상대에게 맞을 것 같으면 쏴요.
+    if (s.phase !== 'play' || p.ammo < c.gun.ultCost || p.fireCd > 0 || s.mode === 'coop' || Math.random() >= ai.level.special * 0.3) return;
+    const foe = s.players[1 - p.side];
+    for (const dir of p.onGround ? ['side', 'up'] : ['side', 'up', 'down']) {
+      const u = bulletAim(p, dir, true);
+      for (let t = 0; t < 60; t++) {
+        u.x += u.vx; u.y += u.vy;
+        if (bulletBlocked(u, s.env) || u.y > GROUND) break;
+        if (Math.hypot(foe.x - u.x, foe.y - 38 - u.y) < 30 + u.r) {
+          input.specialPressed = true;
+          input.attack = false;
+          input.up = dir === 'up';
+          input.down = dir === 'down';
+          return;
+        }
+      }
+    }
+    return;
+  }
   if (!c.special || p.gauge < 1 || s.phase !== 'play') {
     input.special = p.slowing && pressed;
     return;
@@ -650,6 +846,11 @@ function aiSpecial(s, p, input, ai, toward, pressed) {
   let use = false;
   if (c.special === 'rage') use = mine;
   else if (c.special === 'slowTime') use = pressed;
+  else if (c.special === 'tomato') {
+    use = s.mode !== 'coop';
+    input.up = false;
+    input.down = use && Math.random() < 0.5;
+  }
   else if (c.special === 'wide') {
     const z = wideZone(p);
     use = mine && b.y >= z.top && b.y <= z.bottom && onMySide(p, b.x);
@@ -680,7 +881,7 @@ function aiInput(s, i) {
   }
 
   const mine = ai.plan && onMySide(p, ai.plan.x);
-  const stand = c.contact ? 14 : 34;
+  const stand = c.gun ? 45 : c.contact ? 14 : 34;
   const home = p.side === 0 ? 230 : 730;
   const target = mine ? ai.plan.x - toward * stand + ai.error : home;
   const gap = target - p.x;
@@ -695,7 +896,9 @@ function aiInput(s, i) {
       if (spot.y < 330 && spot.y > 230 && Math.abs(spot.x - p.x) < 50) { input.jump = true; break; }
     }
   }
-  if (c.contact) aiContact(s, p, input, ai, toward, urgent);
+  if (c.jumpCut && !p.onGround && p.vy < 0) input.jump = true; // 점프 키를 계속 눌러 높이 떠요
+  if (c.gun) aiGun(s, p, input, ai);
+  else if (c.contact) aiContact(s, p, input, ai, toward, urgent);
   else aiAttack(s, p, input, ai);
   aiSpecial(s, p, input, ai, toward, pressed);
   return input;

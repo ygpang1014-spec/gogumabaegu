@@ -334,7 +334,14 @@ function drawBody(c, char) {
   } else if (char.id === 'cabbage') {
     c.arc(0, -36, 34, 0, Math.PI * 2);
   } else if (char.id === 'tomato') {
-    c.ellipse(0, -36, 35, 33, 0, 0, Math.PI * 2);
+    // 아래가 살짝 통통한 동그란 토마토
+    c.moveTo(0, -66);
+    c.bezierCurveTo(22, -68, 33, -50, 31, -30);
+    c.bezierCurveTo(29, -8, 14, 0, 0, 0);
+    c.bezierCurveTo(-14, 0, -29, -8, -31, -30);
+    c.bezierCurveTo(-33, -50, -22, -68, 0, -66);
+  } else if (char.id === 'corn') {
+    c.ellipse(0, -40, 25, 40, 0, 0, Math.PI * 2);
   } else {
     c.arc(0, -36, char.id === 'coconut' ? 35 : 31, 0, Math.PI * 2);
   }
@@ -351,7 +358,37 @@ function drawBody(c, char) {
     c.beginPath(); c.moveTo(-30, -56); c.quadraticCurveTo(0, -84, 30, -56); c.stroke();
     c.beginPath(); c.moveTo(-34, -30); c.quadraticCurveTo(-16, -8, 0, -2); c.stroke();
   } else if (char.id === 'tomato') {
-    drawLeaves(c, 0, -68, 1);
+    c.fillStyle = 'rgba(255, 255, 255, .35)';
+    c.beginPath(); c.ellipse(-17, -46, 5, 8, 0.5, 0, Math.PI * 2); c.fill();
+    drawLeaves(c, 0, -65, 0.9);
+    // 동그랗게 말린 꼭지
+    c.strokeStyle = '#4f9a3a';
+    c.lineWidth = 3;
+    c.beginPath(); c.moveTo(0, -70); c.quadraticCurveTo(1, -80, 7, -80); c.arc(7, -77, 3, -Math.PI / 2, Math.PI * 0.8); c.stroke();
+  } else if (char.id === 'corn') {
+    // 알갱이
+    c.fillStyle = k.edge;
+    c.globalAlpha = 0.35;
+    for (let row = 0; row < 7; row++) for (let col = -2; col <= 2; col++) {
+      const kx = col * 8 + (row % 2) * 4 - 2, ky = -70 + row * 9;
+      if (Math.hypot(kx / 23, (ky + 40) / 37) < 1) { c.beginPath(); c.ellipse(kx, ky, 2.6, 3.2, 0, 0, Math.PI * 2); c.fill(); }
+    }
+    c.globalAlpha = 1;
+    // 껍질 잎
+    c.fillStyle = '#5aa845';
+    c.strokeStyle = '#356b28';
+    c.lineWidth = 2;
+    for (const sx of [-1, 1]) {
+      c.beginPath();
+      c.moveTo(sx * 4, 0);
+      c.quadraticCurveTo(sx * 34, -10, sx * 30, -52);
+      c.quadraticCurveTo(sx * 22, -22, sx * 10, -8);
+      c.closePath();
+      c.fill();
+      c.stroke();
+    }
+    c.fillStyle = '#c9a646';
+    c.fillRect(-2, -86, 4, 8); // 수염
   } else if (char.id === 'coconut') {
     for (let a = -2.7; a < -0.4; a += 0.28) {
       c.beginPath(); c.moveTo(Math.cos(a) * 34, -36 + Math.sin(a) * 34); c.lineTo(Math.cos(a) * 41, -36 + Math.sin(a) * 41); c.stroke();
@@ -382,10 +419,12 @@ function drawFood(c, x, y, o) {
   c.scale(o.facing, 1);
   if (o.tilt) { c.translate(0, -30); c.rotate(o.tilt); c.translate(0, 30); }
   drawBody(c, o.char);
-  c.beginPath();
-  c.ellipse(6, -48, 18, 19, 0, 0, Math.PI * 2);
-  c.fillStyle = k.face;
-  c.fill();
+  if (!o.char.bareFace) {
+    c.beginPath();
+    c.ellipse(6, -48, 18, 19, 0, 0, Math.PI * 2);
+    c.fillStyle = k.face;
+    c.fill();
+  }
   // 눈: 보는 방향으로 움직여요
   const ex = o.look === 'side' ? 3 : 1, ey = o.look === 'up' ? -3 : o.look === 'down' ? 3 : 0;
   for (const eye of [0, 14]) {
@@ -397,6 +436,13 @@ function drawFood(c, x, y, o) {
     c.arc(eye + ex, -50 + ey, 2.8, 0, Math.PI * 2);
     c.fillStyle = COLORS.night;
     c.fill();
+  }
+  if (o.char.id === 'tomato') {
+    c.fillStyle = 'rgba(255, 150, 160, .75)';
+    for (const bx of [-6, 20]) { c.beginPath(); c.ellipse(bx, -40, 5, 3.2, 0, 0, Math.PI * 2); c.fill(); }
+    c.strokeStyle = COLORS.night;
+    c.lineWidth = 2;
+    c.beginPath(); c.arc(7, -41, 3.5, 0.2, Math.PI - 0.2); c.stroke(); // 웃는 입
   }
   // 목도리: 1P와 2P를 구분해요
   c.fillStyle = o.scarf;
@@ -524,11 +570,36 @@ function drawHud(s) {
   s.players.forEach(drawGauge);
 }
 
+// 옥수수 탄창: 4칸이 아래부터 차요. 3칸 이상이면 필살기 키를 보여줘요.
+function drawAmmo(p, x, top, height) {
+  const g = p.char.gun, cell = height / g.max;
+  for (let i = 0; i < g.max; i++) {
+    const y = top + height - (i + 1) * cell;
+    ctx.fillStyle = 'rgba(0, 0, 0, .35)';
+    ctx.fillRect(x, y + 2, 14, cell - 4);
+    const fill = i < p.ammo ? 1 : i === p.ammo ? p.reload / g.reload : 0;
+    ctx.fillStyle = i < p.ammo ? '#ffe066' : 'rgba(255, 224, 102, .45)';
+    ctx.fillRect(x, y + 2 + (cell - 4) * (1 - fill), 14, (cell - 4) * fill);
+    ctx.strokeStyle = COLORS.text;
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(x, y + 2, 14, cell - 4);
+  }
+  if (p.ammo >= g.ultCost) {
+    ctx.font = `15px ${DISPLAY}`;
+    ctx.textAlign = p.side === 0 ? 'left' : 'right';
+    ctx.fillStyle = COLORS.flesh;
+    const label = match && match.online ? Online.specialLabel(p.side) : p.side === 0 ? 'Q' : 'P';
+    ctx.fillText(label, p.side === 0 ? x : x + 14, top - 14);
+    ctx.textAlign = 'center';
+  }
+}
+
 // 필살기 게이지: 코트 양옆에 세로로 표시해요. 코코넛은 게이지가 없어요.
 function drawGauge(p) {
   const c = p.char;
-  if (!c.special) return;
   const x = p.side === 0 ? 12 : W - 26, top = 150, height = 220;
+  if (c.gun) { drawAmmo(p, x, top, height); return; }
+  if (!c.special) return;
   ctx.fillStyle = 'rgba(0, 0, 0, .35)';
   ctx.fillRect(x, top, 14, height);
   const full = p.gauge >= 1;
@@ -563,7 +634,7 @@ function drawBall(s, fx) {
     // 감속된 공은 파랗게, 가속된 공은 빨갛게 보여요
     const slowed = b.slow < 1 || s.players.some(p => p.slowing && p.char.slowScale);
     const fast = b.slow > 1;
-    if (b.kind === 'tomato') { drawTomatoBall(b, r, slowed, fast); continue; }
+    if (b.kind === 'tomato') { drawTomatoBall(b, r, slowed, COLORS.p[b.owner]); continue; }
     ctx.fillStyle = slowed ? '#a9dcff' : fast ? '#ff6b5e' : COLORS.text;
     ctx.beginPath(); ctx.arc(b.x, b.y, r, 0, Math.PI * 2); ctx.fill();
     ctx.strokeStyle = COLORS.ember;
@@ -574,18 +645,36 @@ function drawBall(s, fx) {
   }
 }
 
-function drawTomatoBall(b, r, slowed, fast) {
-  if (fast) {
-    ctx.fillStyle = 'rgba(255, 107, 94, .35)';
-    ctx.beginPath(); ctx.arc(b.x, b.y, r + 9, 0, Math.PI * 2); ctx.fill();
-  }
-  ctx.fillStyle = slowed ? '#a9dcff' : fast ? '#ff3b2a' : '#e2412f';
+// 토마토공: 가운데 띠 색으로 누구 공인지 보여요
+function drawTomatoBall(b, r, slowed, band) {
+  ctx.fillStyle = slowed ? '#a9dcff' : '#e2412f';
+  ctx.beginPath(); ctx.arc(b.x, b.y, r, 0, Math.PI * 2); ctx.fill();
+  ctx.save();
+  ctx.beginPath(); ctx.arc(b.x, b.y, r, 0, Math.PI * 2); ctx.clip();
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(b.x - r, b.y - r * 0.36, r * 2, r * 0.72);
+  ctx.fillStyle = band;
+  ctx.fillRect(b.x - r, b.y - r * 0.26, r * 2, r * 0.52);
+  ctx.restore();
   ctx.strokeStyle = '#9c2419';
   ctx.lineWidth = 3;
-  ctx.beginPath(); ctx.arc(b.x, b.y, r, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+  ctx.beginPath(); ctx.arc(b.x, b.y, r, 0, Math.PI * 2); ctx.stroke();
   ctx.fillStyle = 'rgba(255, 255, 255, .35)';
   ctx.beginPath(); ctx.arc(b.x - r * 0.35, b.y - r * 0.3, r * 0.22, 0, Math.PI * 2); ctx.fill();
   drawLeaves(ctx, b.x, b.y - r * 0.8, r / 20);
+}
+
+function drawBullets(s) {
+  for (const u of s.bullets || []) {
+    if (u.strong) {
+      ctx.fillStyle = 'rgba(255, 200, 80, .35)';
+      ctx.beginPath(); ctx.arc(u.x, u.y, u.r + 9, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.fillStyle = u.strong ? '#ffb02e' : '#ffe066';
+    ctx.strokeStyle = '#b88d14';
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.ellipse(u.x, u.y, u.r * 1.15, u.r * 0.9, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+  }
 }
 
 function drawPlayer(p) {
@@ -621,12 +710,21 @@ function drawPlayer(p) {
     ctx.fillStyle = 'rgba(200, 208, 245, .35)';
     ctx.beginPath(); ctx.arc(p.x - p.facing * 34, p.y - 38, 32, 0, Math.PI * 2); ctx.fill();
   }
+  if (p.slowed > 0) {
+    // 옥수수 총알에 맞아 느려졌어요
+    ctx.strokeStyle = '#a9dcff';
+    ctx.lineWidth = 3;
+    ctx.setLineDash([6, 6]);
+    ctx.beginPath(); ctx.arc(p.x, p.y - 38, 46, 0, Math.PI * 2); ctx.stroke();
+    ctx.setLineDash([]);
+  }
   if (p.spike > 0) {
     ctx.strokeStyle = COLORS.flesh;
     ctx.lineWidth = 3;
     ctx.beginPath(); ctx.arc(p.x, p.y - 38, 50, 0, Math.PI * 2); ctx.stroke();
   }
-  drawFood(ctx, p.x, p.y, { char: c, facing: p.facing, look: p.look, scarf: COLORS.p[p.side], swinging, tilt: p.dive > 0 ? 1.2 : 0 });
+  const tossing = p.toss > 0;
+  drawFood(ctx, p.x, p.y, { char: c, facing: p.facing, look: tossing ? 'up' : p.look, scarf: COLORS.p[p.side], swinging: swinging || tossing, tilt: p.dive > 0 ? 1.2 : 0 });
   if (c.charge && p.charge > 0) {
     // 수박 충전 막대: 눈금이 중, 끝이 강이에요
     const bx = p.x - 34, by = p.y - 104, bw = 68;
@@ -788,6 +886,7 @@ function render(s, fx) {
   drawHud(s);
   s.players.forEach(drawPlayer);
   drawBall(s, fx);
+  drawBullets(s);
   fx.rings = fx.rings.filter(r => r.life > 0);
   fx.rings.forEach(r => {
     ctx.strokeStyle = r.color;
@@ -835,8 +934,14 @@ function playEvents(s, fx) {
     if (e.type === 'over') showOver(e.winner);
     if (e.type === 'stage') beep(740, 0.2, 'triangle');
     if (e.type === 'pop') {
-      beep(300, 0.12, 'sine');
-      fx.rings.push({ x: e.x, y: GROUND, life: 20, color: '#e2412f' });
+      // 뽕! 하고 터져요
+      beep(880, 0.08, 'sine');
+      fx.rings.push({ x: e.x, y: e.y || GROUND, life: 20, color: '#e2412f' }, { x: e.x, y: e.y || GROUND, life: 12, color: '#ffd0c4' });
+    }
+    if (e.type === 'shot') beep(600, 0.04, 'square');
+    if (e.type === 'zap') {
+      beep(e.strong ? 200 : 360, 0.15, 'sawtooth');
+      fx.rings.push({ x: e.x, y: e.y, life: 20, color: e.strong ? COLORS.ember : '#a9dcff' });
     }
     if (e.type === 'coopEnd') showCoopEnd(s);
   }

@@ -128,6 +128,7 @@ const Online = (() => {
       if (!s.balls[i] || s.balls[i].kind !== b.kind || Math.hypot(s.balls[i].x - b.x, s.balls[i].y - b.y) > 150) s.balls[i] = { ...b };
       s.balls[i].slow = b.slow;
     });
+    s.bullets = m.u || [];
     s.score = m.score;
     s.server = m.server;
     s.clock = m.clock;

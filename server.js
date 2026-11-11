@@ -15,7 +15,7 @@ const ONLINE_MODES = ['versus', 'coop'];
 const TARGETS = [7, 11, 15];
 
 const INPUT = { left: 1, right: 2, up: 4, down: 8, jump: 16, attack: 32, special: 64 };
-const PLAYER_FIELDS = ['x', 'y', 'vy', 'facing', 'look', 'onGround', 'gauge', 'rage', 'charge', 'slowing', 'dash', 'dashSpent', 'dive', 'lock', 'spike', 'cooldown', 'contactGap'];
+const PLAYER_FIELDS = ['x', 'y', 'vy', 'facing', 'look', 'onGround', 'gauge', 'rage', 'charge', 'slowing', 'dash', 'dashSpent', 'dive', 'lock', 'spike', 'cooldown', 'contactGap', 'toss', 'ammo', 'reload', 'fireCd', 'slowed'];
 const MAX_LAG_FRAMES = 12;
 // 시험용: TEST_LAG=100 이면 오가는 메시지를 100ms씩 늦춰 느린 인터넷을 흉내 내요.
 const TEST_LAG = Number(process.env.TEST_LAG) || 0;
@@ -112,6 +112,7 @@ function snapshot(room) {
       return out;
     }),
     b: s.balls.map(b => ({ x: b.x, y: b.y, slow: b.slow, kind: b.kind, owner: b.owner })),
+    u: s.bullets.map(u => ({ x: u.x, y: u.y, r: u.r, strong: u.strong })),
     score: s.score, phase: s.phase, timer: s.timer, server: s.server,
     clock: s.clock, stage: s.stage, cleared: s.cleared, notice: s.notice, env: s.env,
     events,

@@ -40,18 +40,18 @@ async function main() {
   c.ws.close();
 
   a.send({ t: 'pick', pick: 3 });
-  b.send({ t: 'pick', pick: 7 });
+  b.send({ t: 'pick', pick: 8 });
   b.send({ t: 'settings', target: 15 });
   a.send({ t: 'settings', target: 7, deuce: false, mode: 'versus' });
   await wait(100);
-  check('캐릭터 선택 전달', a.last.room.seats[0].pick === 3 && b.last.room.seats[1].pick === 7);
+  check('캐릭터 선택 전달', a.last.room.seats[0].pick === 3 && b.last.room.seats[1].pick === 8);
   check('손님은 규칙을 못 바꿈', a.last.room.target === 7);
 
   a.send({ t: 'ready' });
   b.send({ t: 'ready' });
   await wait(150);
   check('둘 다 준비하면 시작', !!a.last.start && !!b.last.start);
-  check('랜덤이 실제 캐릭터로', a.last.start.chars[1] >= 0 && a.last.start.chars[1] < 7);
+  check('랜덤이 실제 캐릭터로', a.last.start.chars[1] >= 0 && a.last.start.chars[1] < 8);
   check('양쪽 캐릭터 같음', a.last.start.chars.join() === b.last.start.chars.join());
 
   await wait(2800);
