@@ -170,7 +170,7 @@ const Online = (() => {
       fx.age++;
       predictTick();
       if (s.phase === 'intro' && fx.age === 26) beep(180, 0.3, 'sawtooth');
-      if (s.phase === 'over' && fx.age === 70) { $('over').hidden = false; $('again').focus(); }
+      if (s.phase === 'over' && fx.age === 70) { $('overInfo').hidden = true; $('again').textContent = '다시 하기 (R)'; $('toLobby').textContent = '로비로'; $('over').hidden = false; $('again').focus(); }
       if (fx.shake > 0) fx.shake = fx.shake < 0.5 ? 0 : fx.shake * 0.85;
       if (s.phase === 'play') {
         fx.trail.push({ x: s.balls[0].x, y: s.balls[0].y });
